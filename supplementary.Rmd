@@ -161,7 +161,7 @@ subset(.metrics_sps,
 ```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
 ## batch 1
 ## read the file with protein intensities
-.path <- "/scratch/naake/data_QC/1_of_5"
+.path <- "/g/huber/users/naake/data_QC/1_of_5"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -169,7 +169,7 @@ sps_1 <- Spectra(fls, backend = MsBackendMzR())
 
 ## batch 2
 ## read the file with protein intensities
-.path <- "/scratch/naake/data_QC/2_of_5"
+.path <- "/g/huber/users/naake/data_QC/2_of_5"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -177,7 +177,7 @@ sps_2 <- Spectra(fls, backend = MsBackendMzR())
 
 ## batch 3
 ## read the file with protein intensities
-.path <- "/scratch/naake/data_QC/3_of_5"
+.path <- "/g/huber/users/naake/data_QC/3_of_5"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -185,7 +185,7 @@ sps_3 <- Spectra(fls, backend = MsBackendMzR())
 
 ## batch 4
 ## read the file with protein intensities
-.path <- "/sratch/naake/data_QC/4_of_5"
+.path <- "/g/huber/users/naake/data_QC/4_of_5"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -193,7 +193,7 @@ sps_4 <- Spectra(fls, backend = MsBackendMzR())
 
 ## batch 5
 ## read the file with protein intensities
-.path <- "/scratch/naake/data_QC/5_of_5"
+.path <- "/g/huber/users/naake/data_QC/5_of_5"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -204,16 +204,6 @@ sps <- c(sps_1, sps_2, sps_3, sps_4, sps_5)
 ```
 
 ```{r echo = FALSE, eval = FALSE}
-## truncate the dataOrigin
-dataOrigin(sps) <- gsub(dataOrigin(sps), pattern = "\\", 
-    replacement = "/", fixed = TRUE) |>
-    stringr::str_remove(pattern = "C:/Users/naake/Documents/Publications/") |>
-    stringr::str_remove(pattern = "Bioinformatics_MsQuality/data/peak/New_mzMLFinal/") |>
-    stringr::str_remove(pattern = ".mzML") |>
-    strsplit(split = "_Batch") |>
-    lapply(FUN = function(names_i) names_i[[2]]) |> 
-    unlist() 
-
 ## save the Spectra object as RDS file
 saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
 ```
@@ -234,7 +224,27 @@ saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
     metrics = .metrics, msLevel = 1L)
 .metrics_sps_msLevel2 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics, msLevel = 2L)
-saveRDS(.metrics_sps, file = "data/metrics_sps.RDS")
+
+## truncate the dataOrigin
+rownames(.metrics_sps_msLevel1) <- gsub(rownames(.metrics_sps_msLevel1), pattern = "\\", 
+    replacement = "/", fixed = TRUE) |>
+    stringr::str_remove(pattern = "/g/huber/users/naake/") |>
+    stringr::str_remove(pattern = ".mzML") |>
+    strsplit(split = "_Batch") |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() 
+
+rownames(.metrics_sps_msLevel2) <- gsub(rownames(.metrics_sps_msLevel2), pattern = "\\", 
+    replacement = "/", fixed = TRUE) |>
+    stringr::str_remove(pattern = "/g/huber/users/naake/") |>
+    stringr::str_remove(pattern = ".mzML") |>
+    strsplit(split = "_Batch") |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() 
+
+
+saveRDS(.metrics_sps_msLevel1, file = "data/metrics_sps_msLevel1.RDS")
+saveRDS(.metrics_sps_msLevel2, file = "data/metrics_sps_msLevel2.RDS")
 ```
 
 \newpage
