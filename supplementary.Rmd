@@ -1,0 +1,244 @@
+---
+title: "MsQuality: "
+subtitle: "Supplementary information"
+author:
+    - Thomas Naake,^[European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
+    - Johannes Rainer^[]
+    - Wolfgang Huber^[European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
+package: MsQuality
+
+bibliography: document.bib
+fontsize: 12pt
+output:
+  pdf_document:
+    includes:
+      in_header: "preamble.tex"
+    extra_dependencies: ["natbib", "float", "lscape", "subfig", "graphicx"]
+    fig_caption: true
+    keep_tex: true
+    citation_package: natbib
+    toc_depth: 3
+    number_sections: true
+---
+
+The Supplementary Information showcases the functionality of the 
+`MsQuality` package by presenting an exemplary analysis workflow. While the
+`MsQuality` package entails an interactive shiny application, including
+also interactive plots based on the `plotly` framework, static
+plots are presented here.
+
+The analysis here focuses on the clinical data sets of @Cherkaoui2022 
+The data set of @Cherkaoui is a ... mass spectrometry
+proteomics data set of ..., containing in total ... samples
+(... tumor and ... paired non-tumor tissue samples).
+
+```{r style, echo = FALSE, results = 'asis'}
+BiocStyle::markdown()
+```
+
+```{r env, include=FALSE, echo=FALSE, cache=FALSE}
+library("knitr")
+knitr::opts_chunk$set(stop_on_error = 1L, fig.pos = "ht")
+suppressPackageStartupMessages(library("MsQuality"))
+knitr::opts_knit$set(root.dir = "~/Publications/Bioinformatics_MsQuality/")
+```
+
+# Preparation of the environment
+Load the `MsQuality` package before starting the analysis. 
+```{r load_package, echo = 1, eval = TRUE}
+library("MsQuality")
+library("Spectra")
+```
+
+\newpage
+
+# Cherkaoui et al. (2022): A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs
+
+The data set was downloaded from the PRIDE database (accession number PXD006512, 
+available at www.ebi.ac.uk/pride/archive). 
+
+
+## Prepare the mzML files
+
+In order to read the `mzML` files into `R`, the `mzML` files have to be
+modified. This is needed in order to have `mzR`-compatible `mzML` files, 
+since `mzR` cannot read some of the entries and references in the `mzML` files.
+
+To prepare `R`-readable `mzML` files, we peform the following steps for each 
+`mzML` file in the directory:
+- replace the space in the file name by "_",
+- within the `mzML` file, replace the line beginning with
+  `<run defaultInstrumentConfigurationRef=` by `<run`,
+- within the mzML file, delete the lines that are between (and including) the 
+  lines beginning with `<scanWindowList` and `</scanWindowList`,
+- remove the old `mzML` file.
+
+These steps can be conducted via the following `bash` script.
+
+```{bash eval=FALSE, echo=TRUE}
+ls *.mzML | while read mzml_i
+    do
+        new_name="${mzml_i// /_}"
+        cp "$mzml_i" "$new_name"
+        sed 's/<run defaultInstrumentConfigurationRef=.*/<run/g' "$mzml_i" |
+        sed '/^<scanWindowList/,/^<\/scanWindowList/d' > $new_name
+        rm "$mzml_i"
+    done
+```
+
+
+In the following analysis a `Spectra` object is created. Since
+
+```{r echo = FALSE}
+setwd("~/GitHub/MsQuality_manuscript/")
+```
+
+```{r create_spectra_Cherkaoui, eval = FALSE, echo = TRUE, cache=TRUE}
+## read the file with protein intensities
+.path <- "/g/huber/users/naake/data/peak/New_mzMLFinal"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps <- Spectra(fls, backend = MsBackendMzR())
+```
+
+
+```{r echo = FALSE, eval = FALSE}
+## save the Spectra object as RDS file
+saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
+```
+
+## Calculate the metrics via `MsQuality`
+```{r}
+.metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
+
+.metrics_sps <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)
+saveRDS(.metrics_sps, file = "data/metrics_sps_Cherkaoui2022.RDS")
+```
+
+
+## Visualization
+```{r}
+.metrics_sps <- .metrics_sps |>
+    as.data.frame() |>
+    tibble::rownames_to_column(var = "rowname") |>
+    tibble::as_tibble() |>
+    tidyr::pivot_longer(cols = 2:(ncol(.metrics_sps) + 1))
+
+## PrimaryAnalysis downloaded from 
+## https://www.research-collection.ethz.ch/handle/20.500.11850/511784
+.samples <- openxlsx::read.xlsx("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
+    sheet = "injections")
+
+
+
+## truncate the dataOrigin
+.metrics_sps[["rowname"]] <- gsub(.metrics_sps[["rowname"]], 
+        pattern = "\\", replacement = "/", fixed = TRUE) |>
+    strsplit(split = "New_mzMLFinal/") |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() |>
+    stringr::str_remove(pattern = ".mzML")
+.metrics_sps <- .metrics_sps |> 
+    dplyr::mutate(dsCode = sapply(
+        strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
+    dplyr::mutate(analysed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+
+subset(.metrics_sps, 
+    name %in% c("areaUnderTic", "mzAcquisitionRange.min", "mzAcquisitionRange.max")) |>
+    ggplot() +
+        geom_violin(aes(x = analysed, y = value, col = analysed)) +
+        geom_jitter(aes(x = analysed, y = value, col = analysed)) +
+        facet_wrap(~ name, scales = "free") +
+        theme_classic()
+
+
+```
+
+# Amidan et al. (2014): Signatures for mass spectrometry data quality
+
+```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
+## batch 1
+## read the file with protein intensities
+.path <- "/scratch/naake/data_QC/1_of_5"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps_1 <- Spectra(fls, backend = MsBackendMzR())
+
+## batch 2
+## read the file with protein intensities
+.path <- "/scratch/naake/data_QC/2_of_5"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps_2 <- Spectra(fls, backend = MsBackendMzR())
+
+## batch 3
+## read the file with protein intensities
+.path <- "/scratch/naake/data_QC/3_of_5"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps_3 <- Spectra(fls, backend = MsBackendMzR())
+
+## batch 4
+## read the file with protein intensities
+.path <- "/sratch/naake/data_QC/4_of_5"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps_4 <- Spectra(fls, backend = MsBackendMzR())
+
+## batch 5
+## read the file with protein intensities
+.path <- "/scratch/naake/data_QC/5_of_5"
+fls <- dir(.path, full.names = TRUE)
+
+## create the Spectra object
+sps_5 <- Spectra(fls, backend = MsBackendMzR())
+
+## combine the Spectra objects
+sps <- c(sps_1, sps_2, sps_3, sps_4, sps_5)
+```
+
+```{r echo = FALSE, eval = FALSE}
+## truncate the dataOrigin
+dataOrigin(sps) <- gsub(dataOrigin(sps), pattern = "\\", 
+    replacement = "/", fixed = TRUE) |>
+    stringr::str_remove(pattern = "C:/Users/naake/Documents/Publications/") |>
+    stringr::str_remove(pattern = "Bioinformatics_MsQuality/data/peak/New_mzMLFinal/") |>
+    stringr::str_remove(pattern = ".mzML") |>
+    strsplit(split = "_Batch") |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() 
+
+## save the Spectra object as RDS file
+saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
+```
+
+## Calculate the metrics via `MsQuality`
+```{r}
+.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
+    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
+    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
+    "precursorIntensityQuartiles", "precursorIntensityMean", 
+    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
+    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
+    "medianCharge")
+
+.metrics_sps_msLevel1 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics, msLevel = 1L)
+.metrics_sps_msLevel2 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics, msLevel = 2L)
+saveRDS(.metrics_sps, file = "data/metrics_sps.RDS")
+```
+
+\newpage
+
+# References
+
+
