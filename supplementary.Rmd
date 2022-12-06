@@ -162,7 +162,7 @@ subset(.metrics_sps,
 ## batch 1
 ## read the file with protein intensities
 .path <- "/g/huber/users/naake/data_QC/1_of_5"
-fls <- dir(.path, full.names = TRUE)
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps_1 <- Spectra(fls, backend = MsBackendMzR())
@@ -170,7 +170,7 @@ sps_1 <- Spectra(fls, backend = MsBackendMzR())
 ## batch 2
 ## read the file with protein intensities
 .path <- "/g/huber/users/naake/data_QC/2_of_5"
-fls <- dir(.path, full.names = TRUE)
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps_2 <- Spectra(fls, backend = MsBackendMzR())
@@ -178,7 +178,7 @@ sps_2 <- Spectra(fls, backend = MsBackendMzR())
 ## batch 3
 ## read the file with protein intensities
 .path <- "/g/huber/users/naake/data_QC/3_of_5"
-fls <- dir(.path, full.names = TRUE)
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps_3 <- Spectra(fls, backend = MsBackendMzR())
@@ -186,7 +186,7 @@ sps_3 <- Spectra(fls, backend = MsBackendMzR())
 ## batch 4
 ## read the file with protein intensities
 .path <- "/g/huber/users/naake/data_QC/4_of_5"
-fls <- dir(.path, full.names = TRUE)
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps_4 <- Spectra(fls, backend = MsBackendMzR())
@@ -194,7 +194,7 @@ sps_4 <- Spectra(fls, backend = MsBackendMzR())
 ## batch 5
 ## read the file with protein intensities
 .path <- "/g/huber/users/naake/data_QC/5_of_5"
-fls <- dir(.path, full.names = TRUE)
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps_5 <- Spectra(fls, backend = MsBackendMzR())
