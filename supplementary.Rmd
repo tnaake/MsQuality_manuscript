@@ -95,7 +95,7 @@ setwd("~/GitHub/MsQuality_manuscript/")
 
 ```{r create_spectra_Cherkaoui, eval = FALSE, echo = TRUE, cache=TRUE}
 ## read the file with protein intensities
-.path <- "/g/huber/users/naake/data/peak/New_mzMLFinal"
+.path <- "/g/huber/users/naake/GitHub/MsQuality_manuscript/Cherkaoui2022/peak/New_mzMLFinal"
 fls <- dir(.path, full.names = TRUE)
 
 ## create the Spectra object
@@ -109,12 +109,12 @@ saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
 ```
 
 ## Calculate the metrics via `MsQuality`
-```{r}
+```{r eval = FALSE}
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 
 .metrics_sps <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics)
-saveRDS(.metrics_sps, file = "data/metrics_sps_Cherkaoui2022.RDS")
+saveRDS(.metrics_sps, file = "data/Cherkaoui2022_metrics_sps.RDS")
 ```
 
 
@@ -130,8 +130,6 @@ saveRDS(.metrics_sps, file = "data/metrics_sps_Cherkaoui2022.RDS")
 ## https://www.research-collection.ethz.ch/handle/20.500.11850/511784
 .samples <- openxlsx::read.xlsx("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
     sheet = "injections")
-
-
 
 ## truncate the dataOrigin
 .metrics_sps[["rowname"]] <- gsub(.metrics_sps[["rowname"]], 
@@ -154,6 +152,28 @@ subset(.metrics_sps,
         theme_classic()
 
 
+```
+
+## Calculate Peak RAM Used
+
+```{r, eval = FALSE}
+library("peakRAM")
+.metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
+df_ram <- peakRAM(
+    {register(MulticoreParam(1)); calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)},
+    {register(MulticoreParam(2)); calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)},
+    {register(MulticoreParam(4)); calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)},
+    {register(MulticoreParam(8)); calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)},
+    {register(MulticoreParam(16)); calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics)}
+)
+
+## save the data.frame
+saveRDS(df_ram, file = "data/Cherkaoui2022_df_ram.RDS")
 ```
 
 # Amidan et al. (2014): Signatures for mass spectrometry data quality
