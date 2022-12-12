@@ -178,6 +178,21 @@ saveRDS(df_ram, file = "data/Cherkaoui2022_df_ram.RDS")
 
 # Amidan et al. (2014): Signatures for mass spectrometry data quality
 
+
+The datasets were downloaded from 
+
+- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000320 
+  (`1_of_5`),
+- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000321
+  (`2_of_5`),
+- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000322
+  (`3_of_5`),
+- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000323
+  (`4_of_5`),
+- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000324
+  (`5_of_5`).
+
+
 ```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
 ## batch 1
 ## read the file with protein intensities
