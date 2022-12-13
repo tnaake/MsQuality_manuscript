@@ -100,7 +100,7 @@ saveRDS(df_ram, file = "Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
 
 ##
 ##
-## Calculate Peak RAM Used
+## Calculate median time
 library("microbenchmark")
 .path <- "/scratch/naake/Cherkaoui2022"
 fls <- dir(.path, full.names = TRUE, pattern = "mzML")
