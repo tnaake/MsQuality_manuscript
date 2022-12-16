@@ -27,10 +27,21 @@ The Supplementary Information showcases the functionality of the
 also interactive plots based on the `plotly` framework, static
 plots are presented here.
 
-The analysis here focuses on the clinical data sets of @Cherkaoui2022 
-The data set of @Cherkaoui is a ... mass spectrometry
-proteomics data set of ..., containing in total ... samples
-(... tumor and ... paired non-tumor tissue samples).
+The analysis here focuses on the data sets of @Cherkaoui2022 and @Amidan2014.
+
+The data set of @Cherkaoui is a  mass spectrometry
+metabolomics data set of 180 cancer cell lines obtained by flow injection 
+analysis (TOF, negative ionization mode). The data set contains in total 
+1394 samples.
+
+The data set of @Amidan2014 consists of 3400 LC-MS samples of the same 
+QC sample (whole cell lysate of *Shewanella oneidensis*). The QC samples
+were run on Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
+
+The RAW files were downloaded from the indicated FTP repositories and converted
+into `.mzML` files using MSConvertGUI (64-bit, v3.0.22015-aadd392) with setting
+`peakPicking` to `vendor msLevel=1-`.
+
 
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
@@ -39,15 +50,25 @@ BiocStyle::markdown()
 ```{r env, include=FALSE, echo=FALSE, cache=FALSE}
 library("knitr")
 knitr::opts_chunk$set(stop_on_error = 1L, fig.pos = "ht")
+suppressPackageStartupMessages(library("Spectra"))
 suppressPackageStartupMessages(library("MsQuality"))
+suppressPackageStartupMessages(library("peakRAM"))
+suppressPackageStartupMessages(library("microbenchmark"))
 knitr::opts_knit$set(root.dir = "~/Publications/Bioinformatics_MsQuality/")
 ```
 
 # Preparation of the environment
-Load the `MsQuality` package before starting the analysis. 
-```{r load_package, echo = 1, eval = TRUE}
-library("MsQuality")
+
+Load the `Spectra`, `MsQuality`, `peakRAM`, and `microbenchmark` package 
+before starting the analysis. 
+
+```{r load_package, echo = TRUE, eval = TRUE}
 library("Spectra")
+library("MsQuality")
+library("ggplot2")
+library("tidyr")
+library("peakRAM")
+library("microbenchmark")
 ```
 
 \newpage
@@ -55,7 +76,8 @@ library("Spectra")
 # Cherkaoui et al. (2022): A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs
 
 The data set was downloaded from the PRIDE database (accession number PXD006512, 
-available at www.ebi.ac.uk/pride/archive). 
+available at www.ebi.ac.uk/pride/archive) via
+ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2019/05/PXD006512. 
 
 
 ## Prepare the mzML files
@@ -87,7 +109,8 @@ ls *.mzML | while read mzml_i
 ```
 
 
-In the following analysis a `Spectra` object is created. Since
+In the following analysis a `Spectra` object is created. The operations
+are performed in a high-performance clustering environment
 
 ```{r echo = FALSE}
 setwd("~/GitHub/MsQuality_manuscript/")
@@ -95,17 +118,16 @@ setwd("~/GitHub/MsQuality_manuscript/")
 
 ```{r create_spectra_Cherkaoui, eval = FALSE, echo = TRUE, cache=TRUE}
 ## read the file with protein intensities
-.path <- "/g/huber/users/naake/GitHub/MsQuality_manuscript/Cherkaoui2022/peak/New_mzMLFinal"
-fls <- dir(.path, full.names = TRUE)
+.path <- "/scratch/naake/Cherkaoui2022/"
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 ## create the Spectra object
 sps <- Spectra(fls, backend = MsBackendMzR())
 ```
 
-
 ```{r echo = FALSE, eval = FALSE}
 ## save the Spectra object as RDS file
-saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
+saveRDS(sps, file = "Cherkaoui2022/Cherkaoui2022_sps.RDS")
 ```
 
 ## Calculate the metrics via `MsQuality`
@@ -114,9 +136,12 @@ saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
 
 .metrics_sps <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics)
-saveRDS(.metrics_sps, file = "data/Cherkaoui2022_metrics_sps.RDS")
+saveRDS(.metrics_sps, file = "Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 ```
 
+```{r eval = TRUE, echo = FALSE}
+.metrics_sps <- readRDS("Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
+```
 
 ## Visualization
 ```{r}
@@ -132,12 +157,14 @@ saveRDS(.metrics_sps, file = "data/Cherkaoui2022_metrics_sps.RDS")
     sheet = "injections")
 
 ## truncate the dataOrigin
-.metrics_sps[["rowname"]] <- gsub(.metrics_sps[["rowname"]], 
-        pattern = "\\", replacement = "/", fixed = TRUE) |>
-    strsplit(split = "New_mzMLFinal/") |>
+.metrics_sps[["rowname"]] <- .metrics_sps[["rowname"]] |>
+    strsplit(split = "Cherkaoui2022/") |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
     unlist() |>
     stringr::str_remove(pattern = ".mzML")
+
+## add information if the samples was analysed (information stored in 
+## .samples)
 .metrics_sps <- .metrics_sps |> 
     dplyr::mutate(dsCode = sapply(
         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
@@ -150,136 +177,165 @@ subset(.metrics_sps,
         geom_jitter(aes(x = analysed, y = value, col = analysed)) +
         facet_wrap(~ name, scales = "free") +
         theme_classic()
-
-
 ```
 
 ## Calculate Peak RAM Used
 
-```{r, eval = FALSE}
-library("peakRAM")
+```{r, eval = FALSE, echo = TRUE}
+.path <- "/scratch/naake/Cherkaoui2022"
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 df_ram <- peakRAM(
-    {register(MulticoreParam(1)); calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics)},
-    {register(MulticoreParam(2)); calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics)},
-    {register(MulticoreParam(4)); calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics)},
-    {register(MulticoreParam(8)); calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics)},
-    {register(MulticoreParam(16)); calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics)}
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16))
+	}
 )
-
-## save the data.frame
-saveRDS(df_ram, file = "data/Cherkaoui2022_df_ram.RDS")
 ```
+
+
+```{r, eval = FALSE, echo = FALSE}
+## save the data.frame as RDS object
+saveRDS(df_ram, file = "Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
+```
+
+```{r eval = TRUE, echo = FALSE}
+df_ram <- readRDS("Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
+```
+
+```{r}
+df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
+
+df_ram <- df_ram |> 
+    pivot_longer(cols = 2:ncol(df_ram), names_to = "parameter") |>
+    mutate(parameter = case_when(
+        parameter == "Elapsed_Time_sec" ~ "elapsed time (sec)",
+        parameter == "Total_RAM_Used_MiB" ~ "used total RAM",
+        parameter == "Peak_RAM_Used_MiB" ~ "used peak RAM"))
+
+## visualize the elapsed time per amount of used workers
+df_ram |>
+    filter(parameter != "elapsed time (sec)") |>
+    ggplot() +
+        geom_point(aes(x = Function_Call, y = value), size = 3) +
+        xlab("number of workers") + ylab("MiB") +
+        scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
+        facet_wrap(~ parameter, scales = "free_y") +
+        theme_bw() +
+        theme(axis.title = element_text(size = 16), 
+            axis.text = element_text(size = 14),
+            panel.grid = element_blank())
+```
+
+
+```{r echo = TRUE, eval = FALSE}
+library("microbenchmark")
+.path <- "/scratch/naake/Cherkaoui2022"
+fls <- dir(.path, full.names = TRUE, pattern = "mzML")
+.metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
+df_mb <- microbenchmark(
+    workers_1 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1)),
+    workers_2 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2)),
+    workers_4 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4)),
+    workers_8 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8)),
+    workers_16 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16)), 
+	times = 110L, control = list(warmup = 10), check = "equal"
+)
+```
+
+```{r, eval = FALSE, echo = FALSE}
+## save the data.frame
+saveRDS(df_mb, file = "Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
+```
+
+```{r eval = TRUE, echo = FALSE}
+df_mb <- readRDS(file = "Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
+```
+
+```{r echo = TRUE, eval = TRUE}
+## convert from nano seconds to seconds
+df_mb[["time"]] <- df_mb[["time"]] / 10e9
+df_mb <- df_mb |>
+    as.data.frame() |>
+    mutate(expr = case_when(expr == "workers_1" ~ 1,
+        expr == "workers_2" ~ 2, expr == "workers_4" ~ 4,
+        expr == "workers_8" ~ 8, expr == "workers_16" ~ 16))
+
+## visualize the elapsed time per amount of used workers
+ggplot(df_mb) +
+    geom_jitter(aes(x = expr, y = time, col = as.factor(expr)), alpha = 0.2) +
+    geom_violin(aes(x = expr, y = time, group = expr, fill = NA), fill = alpha("white", 0)) +
+    xlab("number of workers") + ylab("elapsed time (sec)") +
+    ##scale_y_continuous(trans = "log2",
+    ##    breaks = trans_breaks("log2", function(x) 2^x),
+    ##    labels = trans_format("log2", math_format(2^.x)),
+    ##    limits = c(3, 100)) +
+    guides(color = guide_legend(override.aes = list(alpha = 1))) +
+    theme_classic() +
+    theme(axis.title = element_text(size = 16), 
+            axis.text = element_text(size = 14))
+```
+
 
 # Amidan et al. (2014): Signatures for mass spectrometry data quality
 
 
 The datasets were downloaded from 
 
-- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000320 
+- ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000320
   (`1_of_5`),
-- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000321
+- ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000321
   (`2_of_5`),
-- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000322
+- ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000322
   (`3_of_5`),
-- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000323
+- ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000323
   (`4_of_5`),
-- http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000324
+- ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000324
   (`5_of_5`).
 
 
 ```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
-## batch 1
-## read the file with protein intensities
-.path <- "/g/huber/users/naake/data_QC/1_of_5"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
-## create the Spectra object
-sps_1 <- Spectra(fls, backend = MsBackendMzR())
-
-## batch 2
-## read the file with protein intensities
-.path <- "/g/huber/users/naake/data_QC/2_of_5"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
-
-## create the Spectra object
-sps_2 <- Spectra(fls, backend = MsBackendMzR())
-
-## batch 3
-## read the file with protein intensities
-.path <- "/g/huber/users/naake/data_QC/3_of_5"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
-
-## create the Spectra object
-sps_3 <- Spectra(fls, backend = MsBackendMzR())
-
-## batch 4
-## read the file with protein intensities
-.path <- "/g/huber/users/naake/data_QC/4_of_5"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
-
-## create the Spectra object
-sps_4 <- Spectra(fls, backend = MsBackendMzR())
-
-## batch 5
-## read the file with protein intensities
-.path <- "/g/huber/users/naake/data_QC/5_of_5"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
-
-## create the Spectra object
-sps_5 <- Spectra(fls, backend = MsBackendMzR())
-
-## combine the Spectra objects
-sps <- c(sps_1, sps_2, sps_3, sps_4, sps_5)
 ```
 
 ```{r echo = FALSE, eval = FALSE}
-## save the Spectra object as RDS file
-saveRDS(sps, file = "Spectra_Cherkaoui2022.RDS")
+
 ```
 
 ## Calculate the metrics via `MsQuality`
 ```{r}
-.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
-    "ticQuantileToQuantileLogRatio", "numberSpectra", 
-    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
-    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
-    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
-    "precursorIntensityQuartiles", "precursorIntensityMean", 
-    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
-    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
-    "medianCharge")
 
-.metrics_sps_msLevel1 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics, msLevel = 1L)
-.metrics_sps_msLevel2 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
-    metrics = .metrics, msLevel = 2L)
-
-## truncate the dataOrigin
-rownames(.metrics_sps_msLevel1) <- gsub(rownames(.metrics_sps_msLevel1), pattern = "\\", 
-    replacement = "/", fixed = TRUE) |>
-    stringr::str_remove(pattern = "/g/huber/users/naake/") |>
-    stringr::str_remove(pattern = ".mzML") |>
-    strsplit(split = "_Batch") |>
-    lapply(FUN = function(names_i) names_i[[2]]) |> 
-    unlist() 
-
-rownames(.metrics_sps_msLevel2) <- gsub(rownames(.metrics_sps_msLevel2), pattern = "\\", 
-    replacement = "/", fixed = TRUE) |>
-    stringr::str_remove(pattern = "/g/huber/users/naake/") |>
-    stringr::str_remove(pattern = ".mzML") |>
-    strsplit(split = "_Batch") |>
-    lapply(FUN = function(names_i) names_i[[2]]) |> 
-    unlist() 
-
-
-saveRDS(.metrics_sps_msLevel1, file = "data/metrics_sps_msLevel1.RDS")
-saveRDS(.metrics_sps_msLevel2, file = "data/metrics_sps_msLevel2.RDS")
 ```
 
 \newpage
