@@ -1,10 +1,10 @@
 ---
-title: "MsQuality: "
-subtitle: "Supplementary information"
+title: "MsQuality – an interoperable open-source package for the calculation of standardized quality metrics of mass spectrometry data"
+subtitle: "Supplementary Data"
 author:
-    - Thomas Naake,^[European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
-    - Johannes Rainer^[]
-    - Wolfgang Huber^[European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
+    - Thomas Naake,^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
+    - Johannes Rainer^[Institute for Biomedicine, Eurac Research, Viale Druso 1, 39100 Bolzano, Italy]
+    - Wolfgang Huber^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
 package: MsQuality
 
 bibliography: document.bib
@@ -21,27 +21,49 @@ output:
     number_sections: true
 ---
 
-The Supplementary Information showcases the functionality of the 
-`MsQuality` package by presenting an exemplary analysis workflow. While the
-`MsQuality` package entails an interactive shiny application, including
-also interactive plots based on the `plotly` framework, static
-plots are presented here.
+The Supplementary Information section of this publication demonstrates the 
+functionality of the `MsQuality` package by presenting two example analysis 
+workflows. The focus is on the data sets of @Cherkaoui2022 and @Amidan2014.
 
-The analysis here focuses on the data sets of @Cherkaoui2022 and @Amidan2014.
+The @Cherkaoui2022 data set is a mass spectrometry metabolomics data set of 
+180 cancer cell lines obtained via flow injection analysis 
+(TOF, negative ionization mode). The data set comprises a total of 1394 samples.
 
-The data set of @Cherkaoui is a  mass spectrometry
-metabolomics data set of 180 cancer cell lines obtained by flow injection 
-analysis (TOF, negative ionization mode). The data set contains in total 
-1394 samples.
+The @Amidan2014 data set consists of 3400 LC-MS samples of a single QC sample 
+(whole cell lysate of *Shewanella oneidensis*). The QC samples were run on 
+Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
-The data set of @Amidan2014 consists of 3400 LC-MS samples of the same 
-QC sample (whole cell lysate of *Shewanella oneidensis*). The QC samples
-were run on Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
+The MsQuality package calculates low-level quality metrics that only require 
+minimal information about the mass spectrometry data: retention time, m/z 
+values, and associated intensities. The list of quality metrics provided by the
+mzQC framework is extensive, also including metrics that depend on more 
+high-level information which might not be readily accessible from .raw or 
+.mzML files, such as pump pressure mean, or that rely on alignment results, 
+like retention time mean shift, signal-to-noise ratio, precursor errors (ppm). 
+These metrics are not currently implemented in `MsQuality`.
 
-The RAW files were downloaded from the indicated FTP repositories and converted
-into `.mzML` files using MSConvertGUI (64-bit, v3.0.22015-aadd392) with setting
-`peakPicking` to `vendor msLevel=1-`.
+The `MsQuality` package is built on the `Spectra` package. Metrics will be 
+calculated based on the information stored in a `Spectra` object, and the 
+respective `dataOrigin` entries are used to distinguish between the mass 
+spectral data of multiple samples.
 
+We would like to note that these metrics only provide an indication of data 
+quality, and more advanced analytics, such as those provided by the 
+`MatrixQCvis` package, should be used before removing low-quality samples from 
+the analysis. Also, data quality should always be considered in the context of 
+the sample type and experimental settings, i.e. quality metrics should always 
+be compared with regard to the sample type, experimental setup, instrumentation, etc.
+
+In this document, we will (i) create `Spectra` objects from the raw data of the 
+two datasets, (ii) calculate the quality metrics on these data sets, 
+(iii) visualize some of the metrics, and (iv) assess the performance 
+and scalability of the implemented algorithms using the `peakRAM` and 
+`microbenchmark` packages.
+
+While the MsQuality package includes an interactive shiny application to 
+navigate mass spectral data quality, with plots based on the plotly framework, 
+this document will present static plots.
+s
 
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
@@ -59,43 +81,59 @@ knitr::opts_knit$set(root.dir = "~/Publications/Bioinformatics_MsQuality/")
 
 # Preparation of the environment
 
-Load the `Spectra`, `MsQuality`, `peakRAM`, and `microbenchmark` package 
-before starting the analysis. 
+The following analysis employs functions from several `R` packages, primarily 
+the `Spectra` package for representing mass spectrometry spectral data and the 
+`MsQuality` package for calculating quality metrics.
+Additional packages are necessary for data visualization (`ggplot2`), 
+data wrangling (`dplyr`, `stringr`, `tibble`, 
+`tidyr`) and performance and scalability analysis
+(`peakRAM`, `microbenchmark`).
+
+To proceed with the analysis, please make sure to load these packages before 
+starting, for instance using:
 
 ```{r load_package, echo = TRUE, eval = TRUE}
-library("Spectra")
-library("MsQuality")
+library("dplyr")
 library("ggplot2")
-library("tidyr")
-library("peakRAM")
 library("microbenchmark")
+library("MsQuality")
+library("peakRAM")
+library("Spectra")
+library("stringr")
+library("tibble")
+library("tidyr")
 ```
 
 \newpage
 
 # Cherkaoui et al. (2022): A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs
 
-The data set was downloaded from the PRIDE database (accession number PXD006512, 
-available at www.ebi.ac.uk/pride/archive) via
-ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2019/05/PXD006512. 
-
+The RAW files were downloaded from the PRIDE database (accession number 
+PXD006512, available at www.ebi.ac.uk/pride/archive) via
+ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2019/05/PXD006512. They were
+then converted into `.mzML` files using MSConvertGUI 
+(64-bit, v3.0.22015-aadd392) with the setting `peakPicking` set to 
+`vendor msLevel=1-`.
 
 ## Prepare the mzML files
 
-In order to read the `mzML` files into `R`, the `mzML` files have to be
-modified. This is needed in order to have `mzR`-compatible `mzML` files, 
-since `mzR` cannot read some of the entries and references in the `mzML` files.
 
-To prepare `R`-readable `mzML` files, we peform the following steps for each 
+In order to read the `mzML` files into `R` and construct a `Spectra` object, 
+the `mzML` files need to be modified to conform to a `mzR`-compatible format. 
+This is necessary because `mzR` is not able to interpret certain entries and 
+references in the original mzML files.
+
+To create `mzR`-compatible `mzML` files, the following steps are taken for each 
 `mzML` file in the directory:
-- replace the space in the file name by "_",
-- within the `mzML` file, replace the line beginning with
-  `<run defaultInstrumentConfigurationRef=` by `<run`,
-- within the mzML file, delete the lines that are between (and including) the 
-  lines beginning with `<scanWindowList` and `</scanWindowList`,
-- remove the old `mzML` file.
 
-These steps can be conducted via the following `bash` script.
+- Replace any spaces in the file name with an underscore ("_"),
+- Within the `mzML` file, replace the line starting with 
+  `<run defaultInstrumentConfigurationRef=` with `<run`,
+- Within the `mzML` file, delete the lines between (and including) the lines 
+  that start with `<scanWindowList` and `</scanWindowList`
+- Remove the original `mzML` file.
+
+These modifications can be automated using the following bash script:
 
 ```{bash eval=FALSE, echo=TRUE}
 ls *.mzML | while read mzml_i
@@ -109,8 +147,9 @@ ls *.mzML | while read mzml_i
 ```
 
 
-In the following analysis a `Spectra` object is created. The operations
-are performed in a high-performance clustering environment
+In the subsequent analysis, a `Spectra` object is instantiated. The operations 
+were executed within a high-performance computing environment, where the modified 
+.mzML files were stored in the directory `Cherkaoui2022`.
 
 ```{r echo = FALSE}
 setwd("~/GitHub/MsQuality_manuscript/")
@@ -131,10 +170,29 @@ saveRDS(sps, file = "Cherkaoui2022/Cherkaoui2022_sps.RDS")
 ```
 
 ## Calculate the metrics via `MsQuality`
+
+`MsQuality` utilizes `Spectra` objects that store the spectral data. In 
+this particular case, where the spectral data was obtained via flow injection 
+analysis, metrics that incorporate retention time information are not 
+relevant and the analysis will only focus on the three metrics
+
+ - `numberSpectra`, **Number of MS1 spectra** (QC:4000059), “The number of MS1 events in the run.” [PSI:QC];
+ - `areaUnderTic`, **Area under TIC** (QC:4000077), “The area under the total ion chromatogram.” [PSI:QC];
+ - `mzAcquisitionRange`, **m/z acquisition range** (QC:4000138), “Upper and lower limit of m/z values at which spectra are recorded.” [PSI:QC].
+
+
+The calculation of the metrics is achieved using the function 
+`calculateMetricsFromSpectra`, which takes as input the `Spectra` object, 
+`sps`, and the above-defined metrics. Additionally, optional parameters 
+can be passed to `calculateMetricsFromSpectra` to further specify the 
+calculation, such as the `msLevel` if multiple mass spectra levels are present 
+in the `Spectra` object. In the current context, where only MS1 level spectra 
+are stored in the `Spectra` object, specifying the `msLevel` is not necessary.
+
 ```{r eval = FALSE}
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 
-.metrics_sps <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
+.metrics_sps <- calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics)
 saveRDS(.metrics_sps, file = "Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 ```
@@ -144,31 +202,43 @@ saveRDS(.metrics_sps, file = "Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 ```
 
 ## Visualization
+
+
+In the analysis of the @Cherkaoui2022 study, the three quality metrics were
+visualized using the` ggplot2` package. The XLSX file metabolomics_180CCL.xlsx,
+downloaded from
+https://www.research-collection.ethz.ch/handle/20.500.11850/511784, was used 
+to extract information on the samples that were included in the subsequent 
+analysis of the @Cherkaoui2022 study. This information was added to the 
+`.metrics_sps` object, specifically, whether the sample was 
+analyzed (`"yes"`) or excluded (`"no"`. 
+A plot was then created to compare the differences in quality metrics 
+between the analyzed and excluded samples.
+
 ```{r}
+## reshape the metrics into long format
 .metrics_sps <- .metrics_sps |>
     as.data.frame() |>
-    tibble::rownames_to_column(var = "rowname") |>
-    tibble::as_tibble() |>
-    tidyr::pivot_longer(cols = 2:(ncol(.metrics_sps) + 1))
+    rownames_to_column(var = "rowname") |>
+    as_tibble() |>
+    pivot_longer(cols = 2:(ncol(.metrics_sps) + 1))
 
-## PrimaryAnalysis downloaded from 
-## https://www.research-collection.ethz.ch/handle/20.500.11850/511784
-.samples <- openxlsx::read.xlsx("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
-    sheet = "injections")
-
-## truncate the dataOrigin
+## for visualization purposes truncate the dataOrigin, the rowname entry
+## will contain 
 .metrics_sps[["rowname"]] <- .metrics_sps[["rowname"]] |>
     strsplit(split = "Cherkaoui2022/") |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
     unlist() |>
-    stringr::str_remove(pattern = ".mzML")
+    str_remove(pattern = ".mzML")
 
 ## add information if the samples was analysed (information stored in 
 ## .samples)
+.samples <- read.xlsx("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
+    sheet = "injections")
 .metrics_sps <- .metrics_sps |> 
-    dplyr::mutate(dsCode = sapply(
+    mutate(dsCode = sapply(
         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
-    dplyr::mutate(analysed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+    mutate(analysed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
 
 subset(.metrics_sps, 
     name %in% c("areaUnderTic", "mzAcquisitionRange.min", "mzAcquisitionRange.max")) |>
@@ -179,7 +249,22 @@ subset(.metrics_sps,
         theme_classic()
 ```
 
+The plot demonstrates that the excluded samples have lower total ion current 
+(TIC) values, which was already noted in the original publication and was the 
+reason for their exclusion from subsequent analysis steps. The plot serves as 
+a visual confirmation of this statement and aids in understanding the data 
+quality of the samples.
+
 ## Calculate Peak RAM Used
+
+An important aspect, especially when dealing with large amount of data,
+is scalability and performance when computing the quality metric. In this 
+section, the total and peakRAM is monitored via `peakRAM`. 
+This package allows for a detailed analysis of the memory usage during the 
+execution of code, providing insights on potential performance bottlenecks and 
+opportunities for optimization. By monitoring memory usage, it is possible 
+to determine the scalability of the code and ensure that the performance of
+the analysis remains acceptable as the data size increases.
 
 ```{r, eval = FALSE, echo = TRUE}
 .path <- "/scratch/naake/Cherkaoui2022"
@@ -248,6 +333,17 @@ df_ram |>
             panel.grid = element_blank())
 ```
 
+<!-- We observe here that overhead is controlled and the total and peak RAM does NOT scale with the number of cores. In general the total and peakRAM was low and managable by a personal computer...       ##################################################################################### -->
+
+
+
+In another application, the time it takes to evaluate the calculation of 
+quality metrics was accurately measured by parallelizing the tasks on
+1, 2, 4, 8, and 16 workers using the `microbenchmark` package. This package 
+allows for precise measurement of the execution time of `R` expressions by 
+repeating the evaluation multiple times and providing detailed summary 
+statistics of the execution times. The parallelization process can help in 
+the management of bigger data sets, and to save valuable time in data analysis.
 
 ```{r echo = TRUE, eval = FALSE}
 library("microbenchmark")
@@ -307,11 +403,15 @@ ggplot(df_mb) +
             axis.text = element_text(size = 14))
 ```
 
+By parallelizing the calculation of the 
+quality metrics across multiple workers, it is possible to significantly 
+reduce the execution time, and the microbenchmark package was used to 
+accurately measure the performance improvements achieved by parallelization. 
 
 # Amidan et al. (2014): Signatures for mass spectrometry data quality
 
 
-The datasets were downloaded from 
+The RAW files were downloaded from 
 
 - ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000320
   (`1_of_5`),
@@ -323,6 +423,10 @@ The datasets were downloaded from
   (`4_of_5`),
 - ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2013/10/PXD000324
   (`5_of_5`).
+
+Subsequently, the RAW files were converted into `.mzML` files using 
+MSConvertGUI (64-bit, v3.0.22015-aadd392) with setting
+`peakPicking` to `vendor msLevel=1-`.
 
 
 ```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
