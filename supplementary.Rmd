@@ -85,7 +85,7 @@ The following analysis employs functions from several `R` packages, primarily
 the `Spectra` package for representing mass spectrometry spectral data and the 
 `MsQuality` package for calculating quality metrics.
 Additional packages are necessary for data visualization (`ggplot2`), 
-data wrangling (`dplyr`, `stringr`, `tibble`, 
+data wrangling (`dplyr`, `readxl``, `stringr`, `tibble`, 
 `tidyr`) and performance and scalability analysis
 (`peakRAM`, `microbenchmark`).
 
@@ -98,6 +98,7 @@ library("ggplot2")
 library("microbenchmark")
 library("MsQuality")
 library("peakRAM")
+library("readxl")
 library("Spectra")
 library("stringr")
 library("tibble")
@@ -146,6 +147,7 @@ ls *.mzML | while read mzml_i
     done
 ```
 
+## Instantiation of the Spectra object
 
 In the subsequent analysis, a `Spectra` object is instantiated. The operations 
 were executed within a high-performance computing environment, where the modified 
@@ -233,7 +235,7 @@ between the analyzed and excluded samples.
 
 ## add information if the samples was analysed (information stored in 
 ## .samples)
-.samples <- read.xlsx("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
+.samples <- read_excel("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
     sheet = "injections")
 .metrics_sps <- .metrics_sps |> 
     mutate(dsCode = sapply(
@@ -429,18 +431,402 @@ MSConvertGUI (64-bit, v3.0.22015-aadd392) with setting
 `peakPicking` to `vendor msLevel=1-`.
 
 
-```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
+############################################################################
+```{bash eval=FALSE, echo=TRUE}
+ls *.mzML | while read mzml_i
+    do
+        sed 's/<run defaultInstrumentConfigurationRef=.*/<run/g' "$mzml_i" |
+        sed '/^<scanWindowList/,/^<\/scanWindowList/d' > $mzml_i
+    done
+```
 
+
+
+## Instantiation of the Spectra object
+
+In the subsequent analysis, a `Spectra` object is instantiated. The operations 
+were executed within a high-performance computing environment, where the modified 
+.mzML files were stored in the directory `Amidan2014`.
+
+```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
+## read the file with protein intensities
+.path <- "/scratch/naake/Amidan2014"
+fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML")
+
+## create the Spectra object
+sps <- Spectra(fls, backend = MsBackendMzR())
 ```
 
 ```{r echo = FALSE, eval = FALSE}
-
+## save the Spectra object as RDS file
+saveRDS(sps, file = "Amidan2014/Amidan2014_sps.RDS")
 ```
 
 ## Calculate the metrics via `MsQuality`
+
+
+`MsQuality` utilizes `Spectra` objects that store the spectral data. Here,
+retention time information was available from the mzML files and a higher
+number of metrics could be calculated:
+
+- *rtDuration*, **RT duration** (QC:4000053), "The retention time duration of the MS run in seconds, similar to the highest scan time minus the lowest scan time." [PSI:QC];
+- *rtOverTicQuantile*, **RT over TIC quantile** (QC:4000054), "The interval when the respective quantile of the TIC accumulates divided by retention time duration. The number of quantiles observed is given by the size of the tuple." [PSI:QC];
+- *rtOverMsQuarters*, **MS1 quantiles RT fraction** (QC:4000055), "The interval used for acquisition of the first, second, third, and fourth quarter of all MS1 events divided by RT-Duration." [PSI:QC];
+- *rtOverMsQuarters*, **MS2 quantiles RT fraction** (QC:4000055), "The interval used for acquisition of the first, second, third, and fourth quarter of all MS2 events divided by RT-Duration." [PSI:QC];
+- *ticQuantileToQuantileLogRatio*, **MS1 quantile TIC change ratio to Quantile 1** (QC:4000057), "The log ratio for the second to n-th quantile of TIC changes over first quantile of TIC changes." [PSI:QC];
+- *numberSpectra*, **Number of MS1 spectra** (QC:4000059), "The number of MS1 events in the run." [PSI:QC]; 
+- *numberSpectra*, **Number of MS2 spectra** (QC:4000060), "The number of MS2 events in the run." [PSI:QC];
+- *medianPrecursorMz*, **Precursor median m/z for IDs** (QC:4000065), "Median m/z value for all identified peptides (unique ions) after FDR." [PSI:QC];
+- *rtIqr*, **Interquartile RT period for peptide identifications** (QC:4000072), "The interquartile retention time period, in seconds, for all peptide identifications over the complete run." [PSI:QC];
+- *rtIqrRate*, **Peptide identification rate of the interquartile RT period** (QC:4000073), "The identification rate of peptides for the interquartile retention time period, in peptides per second." [PSI:QC];
+- *areaUnderTic*, **Area under TIC** (QC:4000077), "The area under the total ion chromatogram." [PSI:QC];
+- *areaUnderTicRtQuantiles*, **Area under TIC RT quantiles** (QC:4000078), "The area under the total ion chromatogram of the retention time quantiles. Number of quantiles are given by the n-tuple." [PSI:QC];
+- *medianTicRtIqr*, **Median of TIC values in the RT range in which the middle half of peptides are identified** (QC:4000130), "Median of TIC values in the RT range in which half of peptides are identified (RT values of Q1 to Q3 of identifications)" [PSI:QC];
+- *medianTicOfRtRange*, **Median of TIC values in the shortest RT range in which half of the peptides are identified** (QC:4000132), "Median of TIC values in the shortest RT range in which half of the peptides are identified"  [PSI:QC] 
+- *mzAcquisitionRange*, **m/z acquisition range** (QC:4000138), "Upper and lower limit of m/z values at which spectra are recorded." [PSI:QC];
+- *rtAcquisitionRange*, **Retention time acquisition range** (QC:4000139), "Upper and lower limit of time at which spectra are recorded." [PSI:QC];
+- *precursorIntensityRange*, **Precursor intensity range** (QC:4000144), "Minimum and maximum precursor intensity recorded." [PSI:QC];
+- *precursorIntensityQuartiles*, **Precursor intensity distribution Q1, Q2, Q3** (QC:4000167), "From the distribution of precursor intensities, the quartiles Q1, Q2, Q3" [PSI:QC];
+- *precursorIntensityMean*, **Precursor intensity distribution mean** (QC:4000168), "From the distribution of precursor intensities, the mean." [PSI:QC];
+- *precursorIntensitySd*, **Precursor intensity distribution sigma** (QC:4000169), "From the distribution of precursor intensities, the sigma value." [PSI:QC];
+- *msSignal10xChange*, **MS1 signal jump (10x) count** (QC:4000172), "The count of MS1 signal jump (spectra sum) by a factor of ten or more (10x) between two subsequent scans" [PSI:QC];
+- *RatioCharge1over2*, **Charged peptides ratio 1+ over 2+** (QC:4000174), "Ratio of 1+ peptide count over 2+ peptide count in identified spectra" [PSI:QC];
+- *RatioCharge1over2*, **Charged spectra ratio 1+ over 2+** (QC:4000179), "Ratio of 1+ spectra count over 2+ spectra count in all MS2" [PSI:QC];
+- *RatioCharge3over2*, **Charged peptides ratio 3+ over 2+** (QC:4000175), "Ratio of 3+ peptide count over 2+ peptide count in identified spectra" [PSI:QC];
+- *RatioCharge3over2*, **Charged spectra ratio 3+ over 2+** (QC:4000180), "Ratio of 3+ peptide count over 2+ peptide count in all MS2" [PSI:QC];
+- *RatioCharge4over2*, **Charged peptides ratio 4+ over 2+** (QC:4000176), "Ratio of 4+ peptide count  over 2+ peptide count in identified spectra" [PSI:QC];
+- *RatioCharge4over2*, **Charged spectra ratio 4+ over 2+** (QC:4000181), "Ratio of 4+ peptide count over 2+ peptide count in all MS2" [PSI:QC];
+- *meanCharge*, **Mean charge in identified spectra** (QC:4000177), "Mean charge in identified spectra" [PSI:QC];
+- *meanCharge*, **Mean precursor charge in all MS2** (QC:4000182), "Mean precursor charge in all MS2" [PSI:QC];
+- *medianCharge*, **Median charge in identified spectra** (QC:4000178), "Median charge in identified spectra" [PSI:QC];
+- *medianCharge*, **Median precursor charge in all MS2** (QC:4000183), "Median precursor charge in all MS2" [PSI:QC].
+
+Again, the calculation of the metrics is achieved using the function
+`calculateMetricsFromSpectra`, which takes as input the `Spectra` object,  -->
+`sps`, and the above-defined metrics. We calculate some of the metrics
+based on their respective msLevel.
+
+Some of the metrics are calculated based on their respective msLevels. This 
+means that some of the metrics may be calculated only for specific MS levels 
+of mass spectrometry data. Overall, this function provides a flexible and 
+efficient way to analyze large amounts of mass spectrometry data and obtain 
+insights on the quality of the data.
+
+```{r, eval = FALSE}
+.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
+    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
+    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
+    "precursorIntensityQuartiles", "precursorIntensityMean", 
+    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
+    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
+    "medianCharge")
+
+.metrics_sps_msLevel1 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
+    metrics = .metrics, msLevel = 1L)
+```
+
+
+```{r echo = FALSE, eval = FALSE}
+saveRDS(.metrics_sps_msLevel1, file = "Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
+```
+
+```{r echo = FALSE, eval = TRUE}
+.metrics_sps_msLevel1 <- readRDS("Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
+```
+
+## Visualization
+
+In the analysis of the @Amidan2014 study, the quality metrics were
+visualized using the` ggplot2` package. The XLS files pr401143e_si_002.xls
+and pr401143e_si_003.xls (provided as Supplemental Material of the original
+publication) was used to extract information on the sample quality.
+This information was added to the `.metrics_sps` object, 
+A plot was then created to compare the differences in quality metrics 
+between the low- and high-quality samples samples. -->
+
 ```{r}
+## reshape the metrics into long format
+.metrics_sps_msLevel1 <- .metrics_sps_msLevel1 |>
+    as.data.frame() |>
+    rownames_to_column(var = "rowname") |>
+    as_tibble() |>
+    pivot_longer(cols = 2:(ncol(.metrics_sps_msLevel1) + 1))
+.metrics_sps_msLevel2 <- .metrics_sps_msLevel2 |>
+    as.data.frame() |>
+    rownames_to_column(var = "rowname") |>
+    as_tibble() |>
+    pivot_longer(cols = 2:(ncol(.metrics_sps_msLevel2) + 1))
+
+## for visualization purposes truncate the dataOrigin, the rowname entry
+## will contain 
+.metrics_sps_msLevel1[["rowname"]] <- .metrics_sps_msLevel1[["rowname"]] |>
+    strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() |>
+    str_remove(pattern = ".mzML")
+.metrics_sps_msLevel2[["rowname"]] <- .metrics_sps_msLevel2[["rowname"]] |>
+    strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() |>
+    str_remove(pattern = ".mzML")
+.metrics_sps_msLevel1[["rowname"]] <- str_replace_all(.metrics_sps_msLevel1[["rowname"]], pattern = "-", replacement = "_")
+
+## add information if the samples was analysed (information stored in 
+## .samples)
+##add here information on the classification of samples
+.samples_training <- read_excel("Amidan2014/pr401143e_si_002.xls",
+    sheet = "FileS1_TrainingDataset")
+.samples_validation <- read_excel("Amidan2014/pr401143e_si_003.xls",
+    sheet = "FileS2_ValidationDataset")
+.cols <- intersect(colnames(.samples_training), colnames(.samples_validation))
+.samples <- rbind(.samples_training[, .cols], .samples_validation[, .cols])
+.samples$Dataset <- str_replace_all(.samples$Dataset, pattern = "-", replacement = "_")
+
+.metrics_sps_msLevel1 <- left_join(.metrics_sps_msLevel1, .samples, by = c("rowname" = "Dataset"), copy = TRUE)
+
+# .metrics_sps <- .metrics_sps |> 
+#     mutate(dsCode = sapply(
+#         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
+#     mutate(analysed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+
+.metrics_name <- c("rtDuration", "rtOverTicQuantile.0%",             
+    #"rtOverTicQuantile.25%", "rtOverTicQuantile.50%"              
+    #"rtOverTicQuantile.75%", "rtOverTicQuantile.100%"             
+    "rtOverMsQuarters.Quarter1", "rtOverMsQuarters.Quarter2",          
+    "rtOverMsQuarters.Quarter3", "rtOverMsQuarters.Quarter4",          
+    "ticQuantileToQuantileLogRatio.Q2/Q1", "ticQuantileToQuantileLogRatio.Q3/Q1",
+    "ticQuantileToQuantileLogRatio.Q4/Q1", "numberSpectra",                     
+    "medianPrecursorMz", "rtIqr",                           
+    "rtIqrRate", "areaUnderTic",                      
+    "areaUnderTicRtQuantiles.25%", "areaUnderTicRtQuantiles.50%",       
+    "areaUnderTicRtQuantiles.75%", "areaUnderTicRtQuantiles.100%",       
+    "medianTicRtIqr", "medianTicOfRtRange",                 
+    "mzAcquisitionRange.min", "mzAcquisitionRange.max",             
+    "rtAcquisitionRange.min", "rtAcquisitionRange.max",             
+    "precursorIntensityRange.min", "precursorIntensityRange.max",       
+    "precursorIntensityQuartiles.25%", "precursorIntensityQuartiles.50%",    
+    "precursorIntensityQuartiles.75%", "precursorIntensityMean",             
+    "precursorIntensitySd", "msSignal10xChange",                  
+    "ratioCharge1over2", "ratioCharge3over2",                  
+    "ratioCharge4over2", "meanCharge",                         
+    "medianCharge")
+
+subset(.metrics_sps_msLevel1, 
+    name %in% c("rtOverTicQUantile.25%", "rtOverTicQUantile.50%",
+                "rtOverTicQUantile.75%", "rtOverTicQUantile.100%")) |> 
+    ggplot() +
+        geom_violin(aes(x = analysed, y = value, col = analysed)) +
+        geom_jitter(aes(x = analysed, y = value, col = analysed)) +
+        facet_wrap(~ name, scales = "free") +
+        theme_classic()
+```
+
+<!-- The plot demonstrates that the excluded samples have lower total ion current  -->
+<!-- (TIC) values, which was already noted in the original publication and was the  -->
+<!-- reason for their exclusion from subsequent analysis steps. The plot serves as  -->
+<!-- a visual confirmation of this statement and aids in understanding the data  -->
+<!-- quality of the samples. -->
+
+The XLS files also contain pre-calculated Quameter metrics for each of the 
+samples. In the following, we will compare the Quameter-metrics to the
+`msQuality` metrics.
+
+```{r}
+## RT_Duration
+.samples[["RT_Duration"]]
+
+## 
+.sampes[["MS1_Count"]]
+## 
+samples[[c("RT_TIC_Q1", "RT_TIC_Q2", "RT_TIC_Q3", "RT_TIC_Q4")]]
+
+## 
+.samples[[c("RT_MS_Q1", "RT_MS_Q2", "RT_MS_Q3", "RT_MS_Q4")]]
+
+## 
+.samples[[c("RT_MSMS_Q1", "RT_MSMS_Q2", "RT_MSMS_Q3", "RT_MSMS_Q4")]]
+
+## 
+.samples[[c("MS1_TIC_Change_Q2", "MS1_TIC_Change_Q3", "MS1_TIC_Change_Q4")]]
+
+.samples[[c("MS1_TIC_Q2", "MS1_TIC_Q3", "MS1_TIC_Q4", "MS1_Count")]]
 
 ```
+
+
+## Calculate Peak RAM Used
+
+Similar to the above-mentioned analysis using the flow injection
+analysis, an important aspect, especially when dealing with large amount of data, 
+is scalability and performance when computing the quality metric. 
+Again, the total and peakRAM is monitored via `peakRAM`.
+
+```{r, eval = FALSE, echo = TRUE}
+.path <- "/scratch/naake/Amidan2014"
+fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
+    unique()
+fls <- fls[1:500]
+
+.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
+    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
+    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
+    "precursorIntensityQuartiles", "precursorIntensityMean", 
+    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
+    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
+    "medianCharge")
+
+df_ram <- peakRAM(
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16))
+	}
+)
+```
+
+```{r, eval = FALSE, echo = FALSE}
+## save the data.frame as RDS object
+saveRDS(df_ram, file = "Amidan2014/Amidan2014_df_ram.RDS")
+```
+
+
+```{r eval = TRUE, echo = FALSE}
+df_ram <- readRDS("Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
+```
+
+```{r}
+df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
+
+df_ram <- df_ram |> 
+    pivot_longer(cols = 2:ncol(df_ram), names_to = "parameter") |>
+    mutate(parameter = case_when(
+        parameter == "Elapsed_Time_sec" ~ "elapsed time (sec)",
+        parameter == "Total_RAM_Used_MiB" ~ "used total RAM",
+        parameter == "Peak_RAM_Used_MiB" ~ "used peak RAM"))
+
+## visualize the elapsed time per amount of used workers
+df_ram |>
+    filter(parameter != "elapsed time (sec)") |>
+    ggplot() +
+        geom_point(aes(x = Function_Call, y = value), size = 3) +
+        xlab("number of workers") + ylab("MiB") +
+        scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
+        facet_wrap(~ parameter, scales = "free_y") +
+        theme_bw() +
+        theme(axis.title = element_text(size = 16), 
+            axis.text = element_text(size = 14),
+            panel.grid = element_blank())
+```
+
+<!-- We observe here that overhead is controlled and the total and peak RAM does NOT scale with the number of cores. In general the total and peakRAM was low and managable by a personal computer...       ##################################################################################### -->
+
+
+
+Similarly to above, we measure the time it takes to calculate the  -->
+quality metrics under parallelization of the tasks on -->
+1, 2, 4, 8, and 16 workers using the `microbenchmark` package. 
+
+```{r echo = TRUE, eval = FALSE}
+library("microbenchmark")
+.path <- "/scratch/naake/Amidan2014"
+fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
+    unique()
+fls <- fls[1:500]
+
+.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
+    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
+    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
+    "precursorIntensityQuartiles", "precursorIntensityMean", 
+    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
+    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
+    "medianCharge")
+
+df_mb <- microbenchmark(
+    workers_1 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1)),
+    workers_2 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2)),
+    workers_4 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4)),
+    workers_8 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8)),
+    workers_16 = bplapply(fls, function(fls_i) {
+		calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ], 
+			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16)), 
+	times = 32L, control = list(warmup = 2), check = "equal"
+)
+```
+
+```{r, eval = FALSE, echo = FALSE}
+
+## save the data.frame
+saveRDS(df_mb, file = "Amidan2014/Amidan2014_df_mb.RDS")
+```
+
+```{r eval = TRUE, echo = FALSE}
+df_mb <- readRDS(file = "Amidan2014/Amidan2014_df_mb.RDS")
+```
+
+```{r echo = TRUE, eval = TRUE}
+## convert from nano seconds to seconds
+df_mb[["time"]] <- df_mb[["time"]] / 10e9
+df_mb <- df_mb |>
+    as.data.frame() |>
+    mutate(expr = case_when(expr == "workers_1" ~ 1,
+        expr == "workers_2" ~ 2, expr == "workers_4" ~ 4,
+        expr == "workers_8" ~ 8, expr == "workers_16" ~ 16))
+
+## visualize the elapsed time per amount of used workers
+ggplot(df_mb) +
+    geom_jitter(aes(x = expr, y = time, col = as.factor(expr)), alpha = 0.2) +
+    geom_violin(aes(x = expr, y = time, group = expr, fill = NA), fill = alpha("white", 0)) +
+    xlab("number of workers") + ylab("elapsed time (sec)") +
+    ##scale_y_continuous(trans = "log2",
+    ##    breaks = trans_breaks("log2", function(x) 2^x),
+    ##    labels = trans_format("log2", math_format(2^.x)),
+    ##    limits = c(3, 100)) +
+    guides(color = guide_legend(override.aes = list(alpha = 1))) +
+    theme_classic() +
+    theme(axis.title = element_text(size = 16), 
+            axis.text = element_text(size = 14))
+```
+
+<!-- By parallelizing the calculation of the  -->
+<!-- quality metrics across multiple workers, it is possible to significantly  -->
+<!-- reduce the execution time, and the microbenchmark package was used to  -->
+<!-- accurately measure the performance improvements achieved by parallelization.  -->
+
+
 
 \newpage
 
