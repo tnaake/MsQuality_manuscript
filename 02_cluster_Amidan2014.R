@@ -52,6 +52,9 @@ saveRDS(sps, file = "Amidan2014/Amidan2014_sps.RDS")
     metrics = .metrics, msLevel = 1L)
 .metrics_sps_msLevel2 <- MsQuality::calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics, msLevel = 2L)
+saveRDS(.metrics_sps_msLevel1, file = "Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
+saveRDS(.metrics_sps_msLevel2, file = "Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
+	
 
 ##
 ##
