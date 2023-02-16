@@ -10,7 +10,7 @@ package: MsQuality
 bibliography: document.bib
 fontsize: 12pt
 output:
-  pdf_document:
+  bookdown::pdf_document2:
     includes:
       in_header: "preamble.tex"
     extra_dependencies: ["natbib", "float", "lscape", "subfig", "graphicx"]
@@ -19,7 +19,12 @@ output:
     citation_package: natbib
     toc_depth: 3
     number_sections: true
+header-includes: 
+  \usepackage{float} \floatplacement{figure}{H} 
+  \newcommand{\beginsupplement}{\setcounter{table}{0}  \renewcommand{\thetable}{S\arabic{table}} \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
 ---
+
+\beginsupplement
 
 The Supplementary Information section of this publication demonstrates the 
 functionality of the `MsQuality` package by presenting two example analysis 
@@ -171,7 +176,7 @@ fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 sps <- Spectra(fls, backend = MsBackendMzR())
 ```
 
-```{r echo = FALSE, eval = FALSE}
+```{r sps_saveRDS_Cherkaoui2022, echo = FALSE, eval = FALSE}
 ## save the Spectra object as RDS file
 saveRDS(sps, file = "Cherkaoui2022/Cherkaoui2022_sps.RDS")
 ```
@@ -196,15 +201,18 @@ calculation, such as the `msLevel` if multiple mass spectra levels are present
 in the `Spectra` object. In the current context, where only MS1 level spectra 
 are stored in the `Spectra` object, specifying the `msLevel` is not necessary.
 
-```{r eval = FALSE}
+```{r calculateMetrics_Cherkaoui2022, eval = FALSE}
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 
 .metrics_sps <- calculateMetricsFromSpectra(spectra = sps, 
     metrics = .metrics)
+```
+
+```{r .metrics_sps_saveRDS_Cherkaoui2022, eval = FALSE}
 saveRDS(.metrics_sps, file = "Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 ```
 
-```{r eval = TRUE, echo = FALSE}
+```{r .metrics_sps_readRDS_saveRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
 .metrics_sps <- readRDS("Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 ```
 
@@ -238,20 +246,22 @@ between the analyzed and excluded samples.
     unlist() |>
     str_remove(pattern = ".mzML")
 
-## add information if the samples was analysed (information stored in 
+## add information if the samples was analyzed (information stored in 
 ## .samples)
 .samples <- read_excel("Cherkaoui2022/PrimaryAnalysis/metabolomics_180CCL.xlsx",
     sheet = "injections")
 .metrics_sps <- .metrics_sps |> 
     mutate(dsCode = sapply(
         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
-    mutate(analysed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+    mutate(analyzed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+```
 
+```{r, fig.cap = "Quality metrics for data set of Cherkaoui et al. (2002) stratified by information if the sample was analyzed or excluded. Displayed are the area under the TIC (areaUnderTic) and the minimum and maximum values of the m/z acquisition range (mzAcquisitionRange.min, mzAcquisitionRange.max)."}
 subset(.metrics_sps, 
     name %in% c("areaUnderTic", "mzAcquisitionRange.min", "mzAcquisitionRange.max")) |>
     ggplot() +
-        geom_violin(aes(x = analysed, y = value, col = analysed)) +
-        geom_jitter(aes(x = analysed, y = value, col = analysed)) +
+        geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
+        geom_jitter(aes(x = analyzed, y = value, col = analyzed)) +
         facet_wrap(~ name, scales = "free") +
         theme_classic()
 ```
@@ -273,7 +283,7 @@ opportunities for optimization. By monitoring memory usage, it is possible
 to determine the scalability of the code and ensure that the performance of
 the analysis remains acceptable as the data size increases.
 
-```{r, eval = FALSE, echo = TRUE}
+```{r df_ram_Cherkaoui2022, eval = FALSE, echo = TRUE}
 .path <- "/scratch/naake/Cherkaoui2022"
 fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
@@ -307,16 +317,16 @@ df_ram <- peakRAM(
 ```
 
 
-```{r, eval = FALSE, echo = FALSE}
+```{r df_ram_saveRDS_Cherkaoui2022, eval = FALSE, echo = FALSE}
 ## save the data.frame as RDS object
 saveRDS(df_ram, file = "Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
 ```
 
-```{r eval = TRUE, echo = FALSE}
+```{r df_ram_readRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
 df_ram <- readRDS("Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
 ```
 
-```{r}
+```{r df_ram_plot_Cherkaoui2022, fig.cap = "Total and peak RAM for the calculation of quality metrics of the data set of Cherkaoui et al. (2022) under parallelization (1, 2, 4, 8, and 16 workers)."}
 df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
 
 df_ram <- df_ram |> 
@@ -340,19 +350,19 @@ df_ram |>
             panel.grid = element_blank())
 ```
 
-<!-- We observe here that overhead is controlled and the total and peak RAM does NOT scale with the number of cores. In general the total and peakRAM was low and managable by a personal computer...       ##################################################################################### -->
+We observe here that overhead is controlled and the total and peak RAM does not 
+scale with the number of cores. In general the total and peak RAM was low and 
+managable by a personal computer.
 
-
-
-In another application, the time it takes to evaluate the calculation of 
-quality metrics was accurately measured by parallelizing the tasks on
+In another application, we measured the time it takes to evaluate the 
+calculation of quality metrics under parallelizing the tasks on
 1, 2, 4, 8, and 16 workers using the `microbenchmark` package. This package 
 allows for precise measurement of the execution time of `R` expressions by 
 repeating the evaluation multiple times and providing detailed summary 
 statistics of the execution times. The parallelization process can help in 
 the management of bigger data sets, and to save valuable time in data analysis.
 
-```{r echo = TRUE, eval = FALSE}
+```{r df_mb_Cherkaoui2022, echo = TRUE, eval = FALSE}
 library("microbenchmark")
 .path <- "/scratch/naake/Cherkaoui2022"
 fls <- dir(.path, full.names = TRUE, pattern = "mzML")
@@ -378,16 +388,16 @@ df_mb <- microbenchmark(
 )
 ```
 
-```{r, eval = FALSE, echo = FALSE}
+```{r df_mb_saveRDS_Cherkaoui2022, eval = FALSE, echo = FALSE}
 ## save the data.frame
 saveRDS(df_mb, file = "Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 ```
 
-```{r eval = TRUE, echo = FALSE}
+```{r df_mb_readRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
 df_mb <- readRDS(file = "Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 ```
 
-```{r echo = TRUE, eval = TRUE}
+```{r df_mb_plot_Cherkaoui2022, echo = TRUE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of Cherkaoui et al. (2022) under parallelization (1, 2, 4, 8, and 16 workers)."}
 ## convert from nano seconds to seconds
 df_mb[["time"]] <- df_mb[["time"]] / 10e9
 df_mb <- df_mb |>
@@ -402,10 +412,6 @@ ggplot(df_mb) +
     geom_violin(aes(x = expr, y = time, group = expr, fill = NA), fill = alpha("white", 0)) +
     xlab("number of workers") + ylab("elapsed time (sec)") +
     scale_x_continuous(breaks = df_mb[["expr"]]) +
-    ##scale_y_continuous(trans = "log2",
-    ##    breaks = trans_breaks("log2", function(x) 2^x),
-    ##    labels = trans_format("log2", math_format(2^.x)),
-    ##    limits = c(3, 100)) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_classic() +
     theme(axis.title = element_text(size = 16), 
@@ -453,7 +459,7 @@ fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML")
 sps <- Spectra(fls, backend = MsBackendMzR())
 ```
 
-```{r echo = FALSE, eval = FALSE}
+```{r sps_saveRDS_Amidan2014, echo = FALSE, eval = FALSE}
 ## save the Spectra object as RDS file
 saveRDS(sps, file = "Amidan2014/Amidan2014_sps.RDS")
 ```
@@ -478,14 +484,14 @@ number of metrics could be calculated:
 - *rtOverMsQuarters*, **MS2 quantiles RT fraction** (QC:4000055), 
   "The interval used for acquisition of the first, second, third, and fourth 
   quarter of all MS2 events divided by RT-Duration." [PSI:QC];
-- *ticQuantileToQuantileLogRatio*, **MS1 TIC-change quartile ratios** 
+- *ticQuartileToQuartileLogRatio*, **MS1 TIC-change quartile ratios** 
   (MS:4000057), "The log ratios of successive TIC-change quartiles. The 
   TIC changes are the list of MS1 total ion current (TIC) value changes 
   from one to the next scan, produced when each MS1 TIC is subtracted 
   from the preceding MS1 TIC. The metric's value triplet represents the 
   log ratio of the TIC-change Q2 to Q1, Q3 to Q2, TIC-change-max to Q3" 
   [PSI:MS], `mode = "TIC_change"`;
-- *ticQuantileToQuantileLogRatio*, **MS1 TIC quartile ratios** (MS:4000058),
+- *ticQuartileToQuartileLogRatio*, **MS1 TIC quartile ratios** (MS:4000058),
   The log ratios of successive TIC quartiles. The metric's value triplet 
   represents the log ratios of TIC-Q2 to TIC-Q1, TIC-Q3 to TIC-Q2, TIC-max to 
   TIC-Q3." [PSI:MS], `mode = "TIC";
@@ -567,7 +573,7 @@ insights on the quality of the data.
 
 ```{r, eval = FALSE}
 .metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
-    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
     "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
@@ -583,14 +589,14 @@ insights on the quality of the data.
 ```
 
 
-```{r echo = FALSE, eval = FALSE}
+```{r .metrics_sps_saveRDS_Amidan2014, echo = FALSE, eval = FALSE}
 saveRDS(.metrics_sps_msLevel1, 
     file = "Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
 saveRDS(.metrics_sps_msLevel2, 
     file = "Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
 ```
 
-```{r echo = FALSE, eval = TRUE}
+```{r .metrics_sps_readRDS_Amidan2014, echo = FALSE, eval = TRUE}
 .metrics_sps_msLevel1 <- readRDS("Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
 .metrics_sps_msLevel2 <- readRDS("Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
 ```
@@ -605,18 +611,16 @@ This information was added to the `.metrics_sps` object.
 A plot was then created to compare the differences in quality metrics 
 between the low- and high-quality samples samples. 
 
-```{r}
+```{r join_metrics_and_metadata}
 ## reshape the metrics into long format
 .metrics_sps_msLevel1 <- .metrics_sps_msLevel1 |>
     as.data.frame() |>
     rownames_to_column(var = "rowname") |>
-    as_tibble() #|>
-    #pivot_longer(cols = 2:(ncol(.metrics_sps_msLevel1) + 1))
+    as_tibble()
 .metrics_sps_msLevel2 <- .metrics_sps_msLevel2 |>
     as.data.frame() |>
     rownames_to_column(var = "rowname") |>
-    as_tibble() #|>
-    #pivot_longer(cols = 2:(ncol(.metrics_sps_msLevel2) + 1))
+    as_tibble()
 
 ## for visualization purposes truncate the dataOrigin, the rowname entry
 ## will contain 
@@ -631,7 +635,7 @@ between the low- and high-quality samples samples.
     unlist() |>
     str_remove(pattern = ".mzML")
 
-## add information if the samples was analysed (information stored in 
+## add information if the samples was analyzed (information stored in 
 ## .samples)
 ##add here information on the classification of samples
 .samples_training <- read_excel("Amidan2014/pr401143e_si_002.xls",
@@ -640,12 +644,16 @@ between the low- and high-quality samples samples.
     sheet = "FileS2_ValidationDataset")
 .cols <- intersect(colnames(.samples_training), colnames(.samples_validation))
 .samples <- rbind(.samples_training[, .cols], .samples_validation[, .cols])
-##.samples$Dataset <- str_replace_all(.samples$Dataset, pattern = "-", replacement = "_")
 
-.metrics_sps_msLevel1 <- left_join(.metrics_sps_msLevel1, .samples, by = c("rowname" = "Dataset"), copy = TRUE)
+.metrics_sps_msLevel1 <- left_join(.metrics_sps_msLevel1, .samples, 
+    by = c("rowname" = "Dataset"), copy = TRUE)
+.metrics_sps_msLevel2 <- left_join(.metrics_sps_msLevel2, .samples, 
+    by = c("rowname" = "Dataset"), copy = TRUE)
+```
 
+```{r areaUnderTIC, fig.cap = "Quality metrics by MsQuality: Area under TIC. The metrics are calculated from MS1 and MS2 spectra."}
 ## area under TIC
-gg_tic <- .metrics_sps_msLevel1 |>
+gg_tic_msLevel1 <- .metrics_sps_msLevel1 |>
     select(rowname, Curated_Quality, rtDuration, areaUnderTic) |>
     filter(Curated_Quality %in% c("good", "poor")) |>
     mutate(rtDuration = rtDuration / 1000) |>
@@ -653,15 +661,29 @@ gg_tic <- .metrics_sps_msLevel1 |>
     ggplot() +
         stat_density_2d(aes(x = rtDuration, y = value, color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("RT duration (s, in 10e3)") + ylab("area under TIC") +
+        xlab("RT duration (s, in 10e3)") + ylab("area under TIC (MS1)") +
         theme_classic() +
         theme(legend.position = "none")
 
-ggpubr::ggarrange(gg_tic, ncol = 1, nrow = 1, labels = "AUTO")
+gg_tic_msLevel2 <- .metrics_sps_msLevel2 |>
+    select(rowname, Curated_Quality, rtDuration, areaUnderTic) |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = areaUnderTic) |>
+    ggplot() +
+        stat_density_2d(aes(x = rtDuration, y = value, color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        xlab("RT duration (s, in 10e3)") + ylab("area under TIC (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none")
 
+ggpubr::ggarrange(gg_tic_msLevel1, gg_tic_msLevel2, ncol = 2, nrow = 1, labels = "AUTO")
+```
+
+```{r, fig.cap = "Quality metrics by MsQuality: Area under TIC RT quantiles. The metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified for high-quality and low-quality samples as classified in Amidan et al. (2014). A: 25% quantile for MS1 spectra. B: 50% quantile for MS1 spectra. C: 75% quantile for MS1 spectra. D: 100% quantile for MS1 spectra. E: 25% quantile for MS2 spectra. F: 50% quantile for MS2 spectra. G: 75% quantile for MS2 spectra. H: 100% quantile for MS2 spectra."}
 ## areaUnderTicRtQuantiles
 ## areaUnderTicRtQuantiles 25%
-gg_tic25 <- .metrics_sps_msLevel1 |>
+gg_tic25_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!duplicated(rowname)) |>
     select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.25%") |>
     filter(Curated_Quality %in% c("good", "poor")) |>
@@ -670,12 +692,25 @@ gg_tic25 <- .metrics_sps_msLevel1 |>
     ggplot(aes(x = rtDuration, y = value)) +
         stat_density_2d(aes(color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("") + ylab("area under TIC (25% RT quantile)") +
+        ylab("25% (MS1)") +
         theme_classic() +
-        theme(legend.position = "none")
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic25_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.25%") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "areaUnderTicRtQuantiles.25%") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("25% (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
 
 ## areaUnderTicRtQuantiles 50%
-gg_tic50 <- .metrics_sps_msLevel1 |>
+gg_tic50_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!duplicated(rowname)) |>
     select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.50%") |>
     filter(Curated_Quality %in% c("good", "poor")) |>
@@ -684,12 +719,25 @@ gg_tic50 <- .metrics_sps_msLevel1 |>
     ggplot(aes(x = rtDuration, y = value)) +
         stat_density_2d(aes(color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("") + ylab("area under TIC (50% RT quantile)") +
+        ylab("50% (MS1)") +
         theme_classic() +
-        theme(legend.position = "none")
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic50_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.50%") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "areaUnderTicRtQuantiles.50%") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("50% (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
 
 ## areaUnderTicRtQuantiles 75%
-gg_tic75 <- .metrics_sps_msLevel1 |>
+gg_tic75_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!duplicated(rowname)) |>
     select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.75%") |>
     filter(Curated_Quality %in% c("good", "poor")) |>
@@ -698,12 +746,25 @@ gg_tic75 <- .metrics_sps_msLevel1 |>
     ggplot(aes(x = rtDuration, y = value)) +
         stat_density_2d(aes(color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("RT duration (s, in 10e3)") + ylab("area under TIC (75% RT quantile)") +
+        ylab("75% (MS1)") +
         theme_classic() +
-        theme(legend.position = "none")
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic75_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.75%") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "areaUnderTicRtQuantiles.75%") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("75% (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
 
 ## areaUnderTicRtQuantiles 100%
-gg_tic100 <- .metrics_sps_msLevel1 |>
+gg_tic100_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!duplicated(rowname)) |>
     select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.100%") |>
     filter(Curated_Quality %in% c("good", "poor")) |>
@@ -712,130 +773,252 @@ gg_tic100 <- .metrics_sps_msLevel1 |>
     ggplot(aes(x = rtDuration, y = value)) +
         stat_density_2d(aes(color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("RT duration (s, in 10e3)") + 
-        ylab("area under TIC (100% RT quantile)") +
+        ylab("100% (MS1)") +
         theme_classic() +
-        theme(legend.position = "none")
+        theme(legend.position = "none", axis.title.x = element_blank())
 
-ggpubr::ggarrange(gg_tic25, gg_tic50, gg_tic75, gg_tic100, ncol = 2, nrow = 2,
-    labels = "AUTO")
-
-## ticQuantileToQuantileLogRatio
-## ticQuantileToQuantileLogRatio Q2/Q1%
-gg_tic_q2 <- .metrics_sps_msLevel1 |>
+gg_tic100_msLevel2 <- .metrics_sps_msLevel2 |>
     filter(!duplicated(rowname)) |>
-    select(rowname, Curated_Quality, rtDuration, "ticQuantileToQuantileLogRatio.Q2/Q1") |>
+    select(rowname, Curated_Quality, rtDuration, "areaUnderTicRtQuantiles.100%") |>
     filter(Curated_Quality %in% c("good", "poor")) |>
     mutate(rtDuration = rtDuration / 1000) |>
-    pivot_longer(cols = "ticQuantileToQuantileLogRatio.Q2/Q1") |>
+    pivot_longer(cols = "areaUnderTicRtQuantiles.100%") |>
     ggplot(aes(x = rtDuration, y = value)) +
         stat_density_2d(aes(color = Curated_Quality)) +
         facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("") + ylab("TIC Q2 to Q1 log ratio") +
+        ylab("100%  (MS2)") +
         theme_classic() +
-        theme(legend.position = "none")
+        theme(legend.position = "none", axis.title.x = element_blank())
 
-## ticQuantileToQuantileLogRatio.Q3/Q1
-gg_tic_q3 <- .metrics_sps_msLevel1 |>
-    filter(!duplicated(rowname)) |>
-    select(rowname, Curated_Quality, rtDuration, "ticQuantileToQuantileLogRatio.Q3/Q1") |>
-    filter(Curated_Quality %in% c("good", "poor")) |>
-    mutate(rtDuration = rtDuration / 1000) |>
-    pivot_longer(cols = "ticQuantileToQuantileLogRatio.Q3/Q1") |>
-    ggplot(aes(x = rtDuration, y = value)) +
-        stat_density_2d(aes(color = Curated_Quality)) +
-        facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("") + ylab("TIC Q3 to Q1 log ratio") +
-        theme_classic() +
-        theme(legend.position = "none")
+p <- ggpubr::ggarrange(gg_tic25_msLevel1, gg_tic50_msLevel1, 
+    gg_tic75_msLevel1, gg_tic100_msLevel1, 
+    gg_tic25_msLevel2, gg_tic50_msLevel2, 
+    gg_tic75_msLevel2, gg_tic100_msLevel2, 
+    ncol = 4, nrow = 2, labels = "AUTO")
 
-## ticQuantileToQuantileLogRatio.Q4/Q1
-gg_tic_q4 <- .metrics_sps_msLevel1 |>
-    filter(!duplicated(rowname)) |>
-    select(rowname, Curated_Quality, rtDuration, "ticQuantileToQuantileLogRatio.Q4/Q1") |>
-    filter(Curated_Quality %in% c("good", "poor")) |>
-    mutate(rtDuration = rtDuration / 1000) |>
-    pivot_longer(cols = "ticQuantileToQuantileLogRatio.Q4/Q1") |>
-    ggplot(aes(x = rtDuration, y = value)) +
-        stat_density_2d(aes(color = Curated_Quality)) +
-        facet_wrap(~ Curated_Quality, scales = "fixed") +
-        xlab("") + ylab("TIC Q4 to Q1 log ratio") +
-        theme_classic() +
-        theme(legend.position = "none")
-
-ggpubr::ggarrange(gg_tic_q2, gg_tic_q3, gg_tic_q4, ncol = 3, nrow = 1,
-    labels = "AUTO")
+ggpubr::annotate_figure(p, 
+    top = ggpubr::text_grob("area under TIC RT quantile"),
+    bottom = "RT duration (s, in 10e3)")
 ```
 
-<!-- The plot demonstrates that the excluded samples have lower total ion current  -->
-<!-- (TIC) values, which was already noted in the original publication and was the  -->
-<!-- reason for their exclusion from subsequent analysis steps. The plot serves as  -->
-<!-- a visual confirmation of this statement and aids in understanding the data  -->
-<!-- quality of the samples. -->
-
-The XLS files also contain pre-calculated Quameter metrics for each of the 
-samples. In the following, we will compare the Quameter-metrics to the
-`msQuality` metrics.
-
-```{r}
-## rtDuration (MsQuality) vs. RT_Duration (Quameter)
-.metrics_sps_msLevel1 |>
-    filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = log(rtDuration), y = log(RT_Duration))) +
-        geom_point(aes(col = Curated_Quality), alpha = 0.2) +
-        xlab("rtDuration (log, MsQuality)") + ylab("RT_Duration (log, Quameter)") +
+```{r ticQuartileToQuartileLogRatio, fig.cap = "Quality metrics by MsQuality: TIC quantile to quantile log ratio. The metrics are calculated from MS1 and MS2 spectra."}
+## ticQuartileToQuartileLogRatio
+## ticQuartileToQuartileLogRatio Q2/Q1%
+gg_tic_q2_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q2/Q1") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q2/Q1") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q2/Q1 (MS1)") +
         theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic_q2_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q2/Q1") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q2/Q1") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q2/Q1 (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+## ticQuartileToQuartileLogRatio.Q3/Q2
+gg_tic_q3_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q3/Q2") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q3/Q2") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q3/Q2 (MS1)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic_q3_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q3/Q2") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q3/Q2") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q3/Q2 (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+## ticQuartileToQuartileLogRatio.Q4/Q3
+gg_tic_q4_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q4/Q3") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q4/Q3") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q4/Q3 (MS1)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+gg_tic_q4_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!duplicated(rowname)) |>
+    select(rowname, Curated_Quality, rtDuration, "ticQuartileToQuartileLogRatio.Q4/Q3") |>
+    filter(Curated_Quality %in% c("good", "poor")) |>
+    mutate(rtDuration = rtDuration / 1000) |>
+    pivot_longer(cols = "ticQuartileToQuartileLogRatio.Q4/Q3") |>
+    ggplot(aes(x = rtDuration, y = value)) +
+        stat_density_2d(aes(color = Curated_Quality)) +
+        facet_wrap(~ Curated_Quality, scales = "fixed") +
+        ylab("Q4/Q3 (MS2)") +
+        theme_classic() +
+        theme(legend.position = "none", axis.title.x = element_blank())
+
+p <- ggpubr::ggarrange(gg_tic_q2_msLevel1, gg_tic_q3_msLevel1, gg_tic_q4_msLevel1, 
+    gg_tic_q2_msLevel2, gg_tic_q3_msLevel2, gg_tic_q4_msLevel2, 
+    ncol = 3, nrow = 2, labels = "AUTO")
+
+ggpubr::annotate_figure(p, 
+    top = ggpubr::text_grob("TIC quantile to quantile log ratio"),
+    bottom = "RT duration (s, in 10e3)")
+```
+
+The plot demonstrates that the low-quality samples (poor) have lower total ion 
+current (TIC) values compared to high-quality samples (good). The plots serve as
+a visual check to differences in TIC values and aids in understanding the data
+quality of the samples.
+
+### Comparison to QuaMeter metrics
+
+The XLS files also contain pre-calculated `QuaMeter` metrics [@Ma2012] for each of 
+the samples. In the following, we will compare the QuaMeter-metrics to the
+`msQuality` metrics to check if the `MsQuality` shows concordant results
+compared to the `QuaMeter` metrics.
+
+```{r rtDuration, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT duration. The metrics by MsQuality are calculated from MS1 and MS2 spectra."}
+## rtDuration (MsQuality) vs. RT_Duration (QuaMeter)
+rt_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = rtDuration, y = RT_Duration)) +
+        geom_point(alpha = 0.2) +
+        xlab("MsQuality (MS1)") + ylab("QuaMeter") +
+        theme_classic() +
+        xlim(0, 40000) + ylim(0, 40000) +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
+rt_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = rtDuration, y = RT_Duration)) +
+        geom_point(alpha = 0.2) +
+        xlab("MsQuality (MS2)") + ylab("QuaMeter") +
+        theme_classic() +
+        xlim(0, 40000) + ylim(0, 40000) +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
+p <- ggpubr::ggarrange(rt_msLevel1, rt_msLevel2, ncol = 2, nrow = 1, labels = "AUTO")
+ggpubr::annotate_figure(p, top = ggpubr::text_grob("RT duration (s)"))
+```
+
+```{r numberSpectra, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: Number of spectra. The metrics are calculated from MS1 and MS2 spectra."}
 ## 
-##  numberSpectra (MsQuality) vs. MS1_Count (Quameter)
+##  numberSpectra (MsQuality) vs. MS1_Count (QuaMeter)
 .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS1_Count)) +
-        geom_point(aes(col = Curated_Quality), alpha = 0.2) +
-        xlab("numberSpectra (MsQuality)") + ylab("MS1 count (Quameter)") +
+        geom_point(alpha = 0.2) +
+        xlab("numberSpectra (MS1, MsQuality)") + ylab("MS1 count (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
+##  numberSpectra (MsQuality) vs. MS2_Count (QuaMeter)
+.metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = numberSpectra, y = MS2_Count)) +
+        geom_point(alpha = 0.2) +
+        xlab("numberSpectra (MS2, MsQuality)") + ylab("MS2 count (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+```
+
+```{r rtOverTicQuantile, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT over TIC quantile. The metrics are calculated from MS1 and MS2 spectra."}
 ## 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q1 (Quameter)
-gg_rt_tic_q1 <- .metrics_sps_msLevel1 |>
+##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q1 (QuaMeter)
+gg_rt_tic_q1_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
     ggplot(aes(x = `rtOverTicQuantile.25%`, y = RT_TIC_Q1)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 25% (MsQuality)") + ylab("RT_TIC_Q1 (Quameter)") +
+        xlab("rtOverTicQuantile 25% (MS1, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q2 (Quameter)
-gg_rt_tic_q2 <- .metrics_sps_msLevel1 |>
+gg_rt_tic_q1_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
+    ggplot(aes(x = `rtOverTicQuantile.25%`, y = RT_TIC_Q1)) +
+        stat_density_2d() +
+        xlab("rtOverTicQuantile 25% (MS2, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q2 (QuaMeter)
+gg_rt_tic_q2_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     ggplot(aes(x = `rtOverTicQuantile.50%`, y = RT_TIC_Q2)) +
-        #geom_point( alpha = 0.1) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 50% (MsQuality)") + ylab("RT_TIC_Q2 (Quameter)") +
+        xlab("rtOverTicQuantile 50% (MS1, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q3 (Quameter)
-gg_rt_tic_q3 <- .metrics_sps_msLevel1 |>
+gg_rt_tic_q2_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
+    ggplot(aes(x = `rtOverTicQuantile.50%`, y = RT_TIC_Q2)) +
+        stat_density_2d() +
+        xlab("rtOverTicQuantile 50% (MS2, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q3 (QuaMeter)
+gg_rt_tic_q3_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
     ggplot(aes(x = `rtOverTicQuantile.75%`, y = RT_TIC_Q3)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 75% (MsQuality)") + 
-        ylab("RT_TIC_Q3 (Quameter)") +
+        xlab("rtOverTicQuantile 75% (MS1, MsQuality)") + 
+        ylab("RT_TIC_Q3 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
+gg_rt_tic_q3_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
+    ggplot(aes(x = `rtOverTicQuantile.75%`, y = RT_TIC_Q3)) +
+        stat_density_2d() +
+        xlab("rtOverTicQuantile 75% (MS2, MsQuality)") + 
+        ylab("RT_TIC_Q3 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-ggpubr::ggarrange(gg_rt_tic_q1, gg_rt_tic_q2, gg_rt_tic_q3, ncol = 3, nrow = 1,
-    labels = "AUTO")
+ggpubr::ggarrange(gg_rt_tic_q1_msLevel1, gg_rt_tic_q2_msLevel1, gg_rt_tic_q3_msLevel1,
+    gg_rt_tic_q1_msLevel2, gg_rt_tic_q2_msLevel2, gg_rt_tic_q3_msLevel2,
+    ncol = 3, nrow = 2, labels = "AUTO")
+```
 
-gg_rt_tic_q3 <- .metrics_sps_msLevel1 |>
+```{r rtTicOverQuantile_Q1Q2Q3_in_one_plot, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT over TIC quantile. The metrics are calculated from MS1 and MS2 spectra."}
+## combine Q1, Q2, and Q3 in one plot per msLevel
+gg_rt_tic_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
@@ -849,26 +1032,131 @@ gg_rt_tic_q3 <- .metrics_sps_msLevel1 |>
     pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
     ggplot(aes(x = rtOverTicQuantile, y = RTTIC)) +
         stat_density_2d(aes(color = Quantile)) +
-        xlab("rtOverTicQuantile (MsQuality)") + 
-        ylab("RT_TIC (Quameter)") +
+        xlab("rtOverTicQuantile (MS1, MsQuality)") + 
+        ylab("RT_TIC (QuaMeter)") +
+        xlim(0, 1) + ylim(0, 1) +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
+gg_rt_tic_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
+    mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
+    select(rowname,  `rtOverTicQuantile.25%`, `rtOverTicQuantile.50%`, 
+        `rtOverTicQuantile.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
+    rename("Q1_rtOverTicQuantile" = `rtOverTicQuantile.25%`,
+        "Q2_rtOverTicQuantile" = `rtOverTicQuantile.50%`,
+        "Q3_rtOverTicQuantile" = `rtOverTicQuantile.75%`,
+        "Q1_RTTIC" = RT_TIC_Q1, "Q2_RTTIC" = RT_TIC_Q2, 
+        "Q3_RTTIC" = RT_TIC_Q3) |>
+    pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
+    ggplot(aes(x = rtOverTicQuantile, y = RTTIC)) +
+        stat_density_2d(aes(color = Quantile)) +
+        xlab("rtOverTicQuantile (MS2, MsQuality)") + 
+        ylab("RT_TIC (QuaMeter)") +
+        xlim(0, 1) + ylim(0, 1) +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-
-
-
-## 
-.samples[[c("RT_MS_Q1", "RT_MS_Q2", "RT_MS_Q3", "RT_MS_Q4")]]
-rtOverMsQuarters
-
-## 
-.samples[[c("RT_MSMS_Q1", "RT_MSMS_Q2", "RT_MSMS_Q3", "RT_MSMS_Q4")]]
-rtOverMsQUarters msLevel2
-
-## MS2-Prec-[1-4]
+ggpubr::ggarrange(gg_rt_tic_msLevel1, gg_rt_tic_msLevel1,
+    ncol = 2, nrow = 1, labels = "AUTO")
 ```
 
+```{r rtOverMsQuarters, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT over MS quarters. The metrics are calculated from MS1 and MS2 spectra."}
+##
+## rtOverMsQuarters vs RT_MS_Q1
+gg_rt_msQuarters_q1_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MS_Q1)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q1 (MsQuality)") + 
+        ylab("Q1 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+## rtOverMsQuarters vs RT_MS_Q2
+gg_rt_msQuarters_q2_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_MS_Q2 = RT_MS_Q1 + RT_MS_Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MS_Q2)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q2 (MsQuality)") + 
+        ylab("Q2 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+gg_rt_msQuarters_q3_msLevel1 <- .metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_MS_Q3 = RT_MS_Q1 + RT_MS_Q2 + RT_MS_Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MS_Q3)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q3 (MsQuality)") + 
+        ylab("Q3 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+## 
+## rtOverMsQuarters vs RT_MSMS_Q1
+gg_rt_msQuarters_q1_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MSMS_Q1)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q1 (MsQuality)") + 
+        ylab("Q1 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+## rtOverMsQuarters vs RT_MSMS_Q2
+gg_rt_msQuarters_q2_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_MSMS_Q2 = RT_MSMS_Q1 + RT_MSMS_Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MSMS_Q2)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q2 (MsQuality)") + 
+        ylab("Q2 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+gg_rt_msQuarters_q3_msLevel2 <- .metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_MSMS_Q3 = RT_MSMS_Q1 + RT_MSMS_Q2 + RT_MSMS_Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MSMS_Q3)) +
+        geom_point(alpha = 0.2) +
+        xlab("Q3 (MsQuality)") + 
+        ylab("Q3 (QuaMeter)") +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+row1 <- annotate_figure(
+    ggarrange(gg_rt_msQuarters_q1_msLevel1, gg_rt_msQuarters_q2_msLevel1, 
+    gg_rt_msQuarters_q3_msLevel1, ncol = 3, nrow = 1, labels = c("A", "B", "C")), left = "MS1")
+row2 <- annotate_figure(
+    ggarrange(gg_rt_msQuarters_q1_msLevel2, gg_rt_msQuarters_q2_msLevel2, 
+    gg_rt_msQuarters_q3_msLevel2, ncol = 3, nrow = 1, labels = c("D", "E", "F")), left = "MS2")
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
+
+ggpubr::annotate_figure(p, top = ggpubr::text_grob("RT over MS Quarters"))
+```
+
+```{r msSignal10xChange, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: MS Signal >10x Change (jump). The metrics are only calculated from MS1 spectra."}
+##
+## msSignal10xChange vs. IS-1A (jumps)
+p <- .metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(IS_1A = as.numeric(IS_1A)) |>
+    ggplot(aes(x = msSignal10xChange, y = IS_1A)) +
+        geom_point(alpha = 0.2) +
+        xlab(" MsQuality") + 
+        ylab(" QuaMeter") +
+        theme_classic() +
+        xlim(0, 1500) + ylim(0, 1500) +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+ggpubr::annotate_figure(p, top = ggpubr::text_grob("MS Signal >10x Change (jump)"))
+```
+
+These plots indicate that the QuaMeter and MsQuality generally compute
+similar values. 
 
 ## Calculate Peak RAM Used
 
@@ -877,14 +1165,13 @@ analysis, an important aspect, especially when dealing with large amount of data
 is scalability and performance when computing the quality metric. 
 Again, the total and peakRAM is monitored via `peakRAM`.
 
-```{r, eval = FALSE, echo = TRUE}
+```{r df_ram_Amidan2014, eval = FALSE, echo = TRUE}
 .path <- "/scratch/naake/Amidan2014"
 fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
-fls <- fls[1:500]
 
 .metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
-    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
     "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
@@ -922,17 +1209,17 @@ df_ram <- peakRAM(
 )
 ```
 
-```{r, eval = FALSE, echo = FALSE}
+```{r df_ram_saveRDS_Amidan2014, eval = FALSE, echo = FALSE}
 ## save the data.frame as RDS object
 saveRDS(df_ram, file = "Amidan2014/Amidan2014_df_ram.RDS")
 ```
 
 
-```{r eval = TRUE, echo = FALSE}
+```{r df_mb_readRDS_Amidan2014, eval = TRUE, echo = FALSE}
 df_ram <- readRDS("Amidan2014/Amidan2014_df_ram.RDS")
 ```
 
-```{r}
+```{r df_ram_plot_Amidan2014, fig.cap = "Total and peak RAM for the calculation of quality metrics of the data set of Amidan2014 et al. (2022) under parallelization (1, 2, 4, 8, and 16 workers)."}
 df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
 
 df_ram <- df_ram |> 
@@ -962,19 +1249,20 @@ We observe here that overhead is controlled when running on 2 or more morkers
 and, in these cases, the peak and total RAM does not scale with the number of cores. For this application, it is recommended to run the jobs within a 
 cluster/server environment.
 
-Similarly to above, we measure the time it takes to calculate the  -->
-quality metrics under parallelization of the tasks on -->
-1, 2, 4, 8, and 16 workers using the `microbenchmark` package. 
+Similarly to above, we measure the time it takes to calculate the  
+quality metrics under parallelization of the tasks on 
+1, 2, 4, 8, and 16 workers using the `microbenchmark` package. For computational
+reasons we limit the calculation on the first 500 mzML files.
 
-```{r echo = TRUE, eval = FALSE}
+```{r df_mb_Amidan2014, echo = TRUE, eval = FALSE}
 library("microbenchmark")
 .path <- "/scratch/naake/Amidan2014"
 fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
-fls <- fls[1:500]
+fls <- fls[1:1000]
 
 .metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
-    "ticQuantileToQuantileLogRatio", "numberSpectra", 
+    "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
     "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
@@ -1003,17 +1291,16 @@ df_mb <- microbenchmark(
 )
 ```
 
-```{r, eval = FALSE, echo = FALSE}
-
+```{r df_mb_saveRDS_Amidan2014, eval = FALSE, echo = FALSE}
 ## save the data.frame
 saveRDS(df_mb, file = "Amidan2014/Amidan2014_df_mb.RDS")
 ```
 
-```{r eval = TRUE, echo = FALSE}
+```{r df_mb_readRDS_Amidan2014, eval = TRUE, echo = FALSE}
 df_mb <- readRDS(file = "Amidan2014/Amidan2014_df_mb.RDS")
 ```
 
-```{r echo = TRUE, eval = TRUE}
+```{r df_mb_plot_Amidan2014, echo = TRUE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of Amidan et al. (2014) under parallelization (1, 2, 4, 8, and 16 workers)."}
 ## convert from nano seconds to seconds
 df_mb[["time"]] <- df_mb[["time"]] / 10e9
 df_mb <- df_mb |>
@@ -1028,10 +1315,6 @@ ggplot(df_mb) +
     geom_violin(aes(x = expr, y = time, group = expr, fill = NA), fill = alpha("white", 0)) +
     xlab("number of workers") + ylab("elapsed time (sec)") +
     scale_x_continuous(breaks = df_mb[["expr"]]) +
-    ##scale_y_continuous(trans = "log2",
-    ##    breaks = trans_breaks("log2", function(x) 2^x),
-    ##    labels = trans_format("log2", math_format(2^.x)),
-    ##    limits = c(3, 100)) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_classic() +
     ylim(50, 800) +
@@ -1040,10 +1323,10 @@ ggplot(df_mb) +
     theme(legend.position = "none")
 ```
 
-<!-- By parallelizing the calculation of the  -->
-<!-- quality metrics across multiple workers, it is possible to significantly  -->
-<!-- reduce the execution time, and the microbenchmark package was used to  -->
-<!-- accurately measure the performance improvements achieved by parallelization.  -->
+The `microbenchmark` package was used to accurately measure the performance 
+improvements achieved by parallelization. By parallelizing the calculation of 
+the quality metrics across multiple workers, it is possible to significantly 
+reduce the execution time
 
 
 
@@ -1062,15 +1345,17 @@ ggplot(df_mb) +
     doi = {}
 }
 
-@article{
-    name = {},
-    title = {},
-    journal = {},
-    volume = {},
-    issue = {},
-    year = {},
-    pages = {},
-    doi = {}
+@article{Amidan2014,
+    name = {Amidan, B.G. and Orton, D.J. and Lamarche, B.L. and Monroe, M.E. and
+        Moore, R.J. and Venzin, A.M. and Smith, R.D. and Sego, L.H. and 
+        Tardiff, M.F. and Payne, S.H.},
+    title = {Signatures for mass spectrometry data quality},
+    journal = {Proteome Research},
+    volume = {13},
+    issue = {4},
+    year = {2014},
+    pages = {2215--2222},
+    doi = {10.1021/pr401143e}
 }
 
 @article{Bereman2015,
@@ -1082,6 +1367,19 @@ ggplot(df_mb) +
     year = {2015},
     pages = {891--902},
     doi = {10.1002/pmic.201400373}
+}
+
+@article{Cherkaoui2022,
+    name = {Cherkaoui, S. and Durot, S. and Bradley, J. and Critchlow, S. and
+        Dubuis, S. and Masiero, M.M. and Wegmann, R. and Snijder, B. and 
+        Othman, A. and Bendtsen, C. and Zamboni, N.},
+    title = {A functional analysis of 180 cancer cell lines reveals 
+        conserved intrinsic metabolic programs},
+    journal = {Molecular Systems Biology},
+    volume = {18},
+    year = {2022},
+    pages = {e11033},
+    doi = {10.15252/msb.202211033}
 }
 
 @article{Koecher2011,
@@ -1112,6 +1410,20 @@ ggplot(df_mb) +
     year = {2010},
     pages = {242--254},
     doi = {10.1074/mcp.M900222-MCP200}
+}
+
+@article{Ma2012,
+    name = {Ma, Z.-Q. and Polzin, K.O. and Dasari, S. and Chambers, M.C. and 
+        Schilling, B. and Gibson, B.W. and Tran, B.Q. and Vega-Montoto, L. and
+        Liebler, D.C. and Tabb, D.L.},
+    title = {QuaMeter: Multivendor Performance Metrics for LC–MS/MS Proteomics 
+        Instrumentation},
+    journal = {Analytical Chemistry},
+    volume = {84},
+    issue = {14},
+    year = {2012},
+    pages = {5845-5850},
+    doi = {10.1021/ac300629p}
 }
 
 @article{Rainer2022,
