@@ -474,7 +474,7 @@ number of metrics could be calculated:
 - *rtDuration*, **RT duration** (QC:4000053), "The retention time duration of 
   the MS run in seconds, similar to the highest scan time minus the lowest 
   scan time." [PSI:QC];
-- *rtOverTicQuantile*, **RT over TIC quantile** (QC:4000054), "The interval 
+- *rtOverTicQuantiles*, **RT over TIC quantile** (QC:4000054), "The interval 
   when the respective quantile of the TIC accumulates divided by retention time 
   duration. The number of quantiles observed is given by the size of the tuple." 
   [PSI:QC];
@@ -572,7 +572,7 @@ efficient way to analyze large amounts of mass spectrometry data and obtain
 insights on the quality of the data.
 
 ```{r, eval = FALSE}
-.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+.metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
     "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
@@ -950,53 +950,53 @@ ggpubr::annotate_figure(p, top = ggpubr::text_grob("RT duration (s)"))
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 ```
 
-```{r rtOverTicQuantile, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT over TIC quantile. The metrics are calculated from MS1 and MS2 spectra."}
+```{r rtOverTicQuantiles, fig.cap = "Scatterplot between quality metrics calculated by MsQuality and QuaMeter: RT over TIC quantile. The metrics are calculated from MS1 and MS2 spectra."}
 ## 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q1 (QuaMeter)
+##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
-    ggplot(aes(x = `rtOverTicQuantile.25%`, y = RT_TIC_Q1)) +
+    ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 25% (MS1, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
+        xlab("rtOverTicQuantiles 25% (MS1, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
 gg_rt_tic_q1_msLevel2 <- .metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
-    ggplot(aes(x = `rtOverTicQuantile.25%`, y = RT_TIC_Q1)) +
+    ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 25% (MS2, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
+        xlab("rtOverTicQuantiles 25% (MS2, MsQuality)") + ylab("RT_TIC_Q1 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q2 (QuaMeter)
+##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q2 (QuaMeter)
 gg_rt_tic_q2_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    ggplot(aes(x = `rtOverTicQuantile.50%`, y = RT_TIC_Q2)) +
+    ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 50% (MS1, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
+        xlab("rtOverTicQuantiles 50% (MS1, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
 gg_rt_tic_q2_msLevel2 <- .metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    ggplot(aes(x = `rtOverTicQuantile.50%`, y = RT_TIC_Q2)) +
+    ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 50% (MS2, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
+        xlab("rtOverTicQuantiles 50% (MS2, MsQuality)") + ylab("RT_TIC_Q2 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-##  rtOverTicQuantile (MsQuality) vs. RT_TIC_Q3 (QuaMeter)
+##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q3 (QuaMeter)
 gg_rt_tic_q3_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
-    ggplot(aes(x = `rtOverTicQuantile.75%`, y = RT_TIC_Q3)) +
+    ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 75% (MS1, MsQuality)") + 
+        xlab("rtOverTicQuantiles 75% (MS1, MsQuality)") + 
         ylab("RT_TIC_Q3 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
@@ -1004,9 +1004,9 @@ gg_rt_tic_q3_msLevel1 <- .metrics_sps_msLevel1 |>
 gg_rt_tic_q3_msLevel2 <- .metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
-    ggplot(aes(x = `rtOverTicQuantile.75%`, y = RT_TIC_Q3)) +
+    ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
         stat_density_2d() +
-        xlab("rtOverTicQuantile 75% (MS2, MsQuality)") + 
+        xlab("rtOverTicQuantiles 75% (MS2, MsQuality)") + 
         ylab("RT_TIC_Q3 (QuaMeter)") +
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
@@ -1022,17 +1022,17 @@ gg_rt_tic_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
-    select(rowname,  `rtOverTicQuantile.25%`, `rtOverTicQuantile.50%`, 
-        `rtOverTicQuantile.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
-    rename("Q1_rtOverTicQuantile" = `rtOverTicQuantile.25%`,
-        "Q2_rtOverTicQuantile" = `rtOverTicQuantile.50%`,
-        "Q3_rtOverTicQuantile" = `rtOverTicQuantile.75%`,
+    select(rowname,  `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, 
+        `rtOverTicQuantiles.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
+    rename("Q1_rtOverTicQuantiles" = `rtOverTicQuantiles.25%`,
+        "Q2_rtOverTicQuantiles" = `rtOverTicQuantiles.50%`,
+        "Q3_rtOverTicQuantiles" = `rtOverTicQuantiles.75%`,
         "Q1_RTTIC" = RT_TIC_Q1, "Q2_RTTIC" = RT_TIC_Q2, 
         "Q3_RTTIC" = RT_TIC_Q3) |>
     pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
-    ggplot(aes(x = rtOverTicQuantile, y = RTTIC)) +
+    ggplot(aes(x = rtOverTicQuantiles, y = RTTIC)) +
         stat_density_2d(aes(color = Quantile)) +
-        xlab("rtOverTicQuantile (MS1, MsQuality)") + 
+        xlab("rtOverTicQuantiles (MS1, MsQuality)") + 
         ylab("RT_TIC (QuaMeter)") +
         xlim(0, 1) + ylim(0, 1) +
         theme_classic() +
@@ -1042,17 +1042,17 @@ gg_rt_tic_msLevel2 <- .metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
-    select(rowname,  `rtOverTicQuantile.25%`, `rtOverTicQuantile.50%`, 
-        `rtOverTicQuantile.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
-    rename("Q1_rtOverTicQuantile" = `rtOverTicQuantile.25%`,
-        "Q2_rtOverTicQuantile" = `rtOverTicQuantile.50%`,
-        "Q3_rtOverTicQuantile" = `rtOverTicQuantile.75%`,
+    select(rowname,  `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, 
+        `rtOverTicQuantiles.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
+    rename("Q1_rtOverTicQuantiles" = `rtOverTicQuantiles.25%`,
+        "Q2_rtOverTicQuantiles" = `rtOverTicQuantiles.50%`,
+        "Q3_rtOverTicQuantiles" = `rtOverTicQuantiles.75%`,
         "Q1_RTTIC" = RT_TIC_Q1, "Q2_RTTIC" = RT_TIC_Q2, 
         "Q3_RTTIC" = RT_TIC_Q3) |>
     pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
-    ggplot(aes(x = rtOverTicQuantile, y = RTTIC)) +
+    ggplot(aes(x = rtOverTicQuantiles, y = RTTIC)) +
         stat_density_2d(aes(color = Quantile)) +
-        xlab("rtOverTicQuantile (MS2, MsQuality)") + 
+        xlab("rtOverTicQuantiles (MS2, MsQuality)") + 
         ylab("RT_TIC (QuaMeter)") +
         xlim(0, 1) + ylim(0, 1) +
         theme_classic() +
@@ -1170,7 +1170,7 @@ Again, the total and peakRAM is monitored via `peakRAM`.
 fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
 
-.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+.metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
     "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
@@ -1261,7 +1261,7 @@ fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
 fls <- fls[1:1000]
 
-.metrics <- c("rtDuration", "rtOverTicQuantile", "rtOverMsQuarters", 
+.metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
     "ticQuartileToQuartileLogRatio", "numberSpectra", 
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
