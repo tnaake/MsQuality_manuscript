@@ -15,7 +15,7 @@ if (!require("Spectra", quietly = TRUE))
 	##remotes::install_github("rformassspectrometry/Spectra", ref = "RELEASE_3_15")
     BiocManager::install("Spectra", ask = FALSE)
 
-remotes::install_github("tnaake/MsQuality", upgrade = "always", force = TRUE)
+remotes::install_github("tnaake/MsQuality", upgrade = "always")
 BiocManager::install("peakRAM", ask = FALSE)
 BiocManager::install("microbenchmark", ask = FALSE)
 
@@ -60,9 +60,14 @@ print("")
 
 ##
 ##
-## Calculate the metrics via MsQuality
-print("calculate metrics.")
-.metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters",
+## Calculate Peak RAM Used
+print("start peakRAM.")
+library("peakRAM")
+.path <- "/scratch/naake/Amidan2014"
+
+fls <- dataOrigin(sps) |>
+	unique()
+.metrics <- c("rtDuration", "rtOverTicQuantile", 
     "ticQuartileToQuartileLogRatio", "numberSpectra",
     "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic",
     "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
@@ -72,12 +77,37 @@ print("calculate metrics.")
     "ratioCharge3over2", "ratioCharge4over2", "meanCharge",
     "medianCharge")
 
-.metrics_sps_msLevel1 <- MsQuality::calculateMetricsFromSpectra(spectra = sps,
-    metrics = .metrics, msLevel = 1L, mode = "TIC")
-.metrics_sps_msLevel2 <- MsQuality::calculateMetricsFromSpectra(spectra = sps,
-    metrics = .metrics, msLevel = 2L, mode = "TIC")
-saveRDS(.metrics_sps_msLevel1, file = "Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
-saveRDS(.metrics_sps_msLevel2, file = "Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
-print("calculate metrics finished.")
+df_ram <- peakRAM(
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
+				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 1, stop.on.error = TRUE))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
+				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 2, stop.on.error = TRUE))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
+				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 4, stop.on.error = TRUE))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
+				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 8, stop.on.error = TRUE))
+	},
+    function() {
+		bplapply(fls, function(fls_i) {
+			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
+				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 16, stop.on.error = TRUE))
+	}
+)
+
+## save the data.frame
+saveRDS(df_ram, file = "Amidan2014/Amidan2014_df_ram.RDS")
+print("finish peakRAM.")
 print("")
+
 

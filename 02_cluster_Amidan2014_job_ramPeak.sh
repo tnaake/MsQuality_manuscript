@@ -11,4 +11,4 @@
 
 module load R-bundle-Bioconductor/3.15-foss-2021b-R-4.2.0
 cd /g/huber/users/naake/GitHub/MsQuality_manuscript/
-Rscript 02_cluster_Amidan2014.R
+Rscript 02_cluster_Amidan2014_ramPeak.R
