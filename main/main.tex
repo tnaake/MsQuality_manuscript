@@ -23,7 +23,7 @@
 
 \address{
 $^{\text{\sf 1}}$ Genome Biology Unit, European Molecular Biology Laboratory, Heidelberg, 69117, Germany \\
-$^{\text{\sf 2}}$ Institute for Biomedicine, Eurac Research, Viale Druso 1, 39100 Bolzano, Italy}
+$^{\text{\sf 2}}$ Institute for Biomedicine (Affiliated to the University of L\"ubeck), Eurac Research, Viale Druso 1, 39100 Bolzano, Italy}
 
 
 \corresp{$^\ast$corresponding author.}
@@ -44,8 +44,8 @@ the controlled vocabulary of the mzQC quality metrics defined by HUPO-PSI.
 The package helps to identify low-quality samples and track data quality, 
 ultimately improving the quality and reproducibility of mass spectrometry 
 data for robust scientific discoveries. \\
-\textbf{Availability:} MsQuality is implemented in R. It is available via 
-Bioconductor and released under the GPL v3.0 license.\\
+\textbf{Availability:} MsQuality is implemented in R and is available through 
+Bioconductor at https://bioconductor.org/packages/MsQuality.\\
 \textbf{Contact:} \href{wolfgang.huber@embl.org}{wolfgang.huber@embl.org}\\
 \textbf{Supplementary information:} Supplementary data are available at \textit{Bioinformatics}
 online.}
@@ -67,13 +67,10 @@ highest quality, it is imperative to implement appropriate quality control
 Here, we introduce the \texttt{MsQuality} R-package, which provides 
 functionality to calculate, assess, and track quality metrics for mass 
 spectrometry-derived spectral data at the per-sample level. 
-\texttt{MsQuality} is based on the controlled vocabulary of the mzQC quality 
-metrics defined by the Human Proteome Organization-Proteomics Standards 
-Initiative (HUPO-PSI, hupo-psi.github.io/mzQC/). The package calculates
-approximately 40 low-level 
-quality metrics that can be computed from the minimum information on mass 
-spectrometry data, including retention time, m/z values, associated intensities, 
-and MS levels.
+The package allows to compute about 40 of the mzQC quality metrics defined by
+the Human Proteome Organization-Proteomics Standards Initiative (HUPO-PSI,
+hupo-psi.github.io/mzQC. These are calculated on low-level MS data
+such as retention times and m/z and associated intensity values.
 
 The package enables tracking and quantification of data quality using 
 multiple metrics even on a large scale and helps to identify samples that 
@@ -84,14 +81,14 @@ focuses on the calculation of inter-experiment metrics, which can typically be
 obtained by summation from an inter-experiment metric. Examples for
 intra-experiment metrics are the chromatogram of the total ion current (TIC) 
 over the retention time. Inter-experiment metrics, on the other hand, 
-facilitate the comparision of multiple mass spectrometry runs or experiments, 
-e.g. via longitudinal analysis of the metrics, such as by comparing the
+facilitate the comparison of multiple MS runs or experiments, 
+e.g. via longitudinal analysis of quality metrics, such as the
 fractions of the total retention time required to accumulate a given
 percentile of the TIC.
 
 \section{Usage scenario and implementation} \label{usagescenario}
 
-\texttt{MsQuality} offers an easy-to-use means of evaluating data quality on a 
+\texttt{MsQuality} offers easy-to-use means of evaluating data quality on a 
 per-sample basis, including the identification of low-quality samples 
 (e.g. poor intensities, low signal-to-noise ratio), biases and outliers, 
 variations in calibration, and batch and confounding effects within datasets
@@ -133,26 +130,19 @@ chromatography(LC)-MS dataset of
 the same QC sample \citep{Amidan2014} for long-term quality control 
 (see the Supplementary Data for further details).
 
-\texttt{MsQuality} is implemented as an open-source R package, utilizing the 
-de-facto standard format for representing spectral data in R, \texttt{Spectra} 
-and \texttt{MsExperiment} classes \citep{Rainer2022}, to serve as containers 
-for spectral data. The tool enables users to calculate quality metrics on 
-both object types. The infrastructure of the \texttt{Spectra} package allows 
-for the upload of raw mass spectral files in the .mzML file format. In this 
-context, \texttt{Spectra} objects serve as a list of individual spectra, 
-each with a set of associated variables such as 
-intensity, m/z, polarity, precursor intensity, precursor m/z, and precursor 
-charge. \texttt{MsExperiment} objects serve as a container for \texttt{Spectra} 
-objects and can store additional information on the underlying experiment, 
-e.g., sample information, experimental conditions, etc.
+\texttt{MsQuality} is implemented as an open-source R package, relying on the
+established \texttt{Spectra} and \texttt{MsExperiment} packages
+\citep{Rainer2022} to provide and represent the MS data. By building on these
+packages \texttt{MsQuality} thus supports a large variety of data input formats
+as well as analyses of very large experiments through the use of data
+representations with low memory footprint. Native parallelization enables a fast
+and scalable calculation of quality metrics (Fig. \ref{fig:fig1} d, 
+see the Supplementary Data for further details).
 
-\texttt{MsQuality} requires little programmatic interaction to calculate metrics 
+Finally, \texttt{MsQuality} requires little programmatic interaction to calculate metrics 
 by using only one function call after the instantiation of \texttt{Spectra} or 
-\texttt{MsExperiment}
-objects.
-Furthermore, we demonstrate that the calculation is fast and scalable under 
-parallelization (Fig. \ref{fig:fig1} d, 
-see the Supplementary Data for further details)
+\texttt{MsExperiment} objects.
+
 
 \section{Conclusion}
 
@@ -164,10 +154,10 @@ to be user-friendly and streamlined and requires little programmatic
 interaction, facilitating reproducible calculations and evaluations of data 
 quality metrics.
 
-By building upon an extensive ecosystem for mass spectrometry, utilizing
-\texttt{Spectra} and \texttt{MsExperiment} objects \citep{Rainer2022},  
-\texttt{MsQuality} will aid researchers in creating seamless analysis pipelines 
-to provide a rapid, efficient, and standardized evaluation of MS data quality, 
+By building upon an extensive ecosystem for mass spectrometry data, centered
+around the \texttt{Spectra} and \texttt{MsExperiment} packages \citep{Rainer2022},  
+\texttt{MsQuality} enables researchers to create seamless analysis workflows 
+for rapid, efficient, and standardized evaluation of MS data quality, 
 ultimately leading to more robust scientific discoveries in mass spectrometry
 workflows.
 
