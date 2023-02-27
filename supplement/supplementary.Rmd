@@ -3,7 +3,7 @@ title: "MsQuality – an interoperable open-source package for the calculation o
 subtitle: "Supplementary Data"
 author:
     - Thomas Naake,^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
-    - Johannes Rainer^[Institute for Biomedicine, Eurac Research, Viale Druso 1, 39100 Bolzano, Italy]
+    - Johannes Rainer^[Institute for Biomedicine (Affiliated Institute of the University of Lübeck), Eurac Research, Viale Druso 1, 39100 Bolzano, Italy]
     - Wolfgang Huber^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
 package: MsQuality
 
@@ -30,7 +30,7 @@ The Supplementary Information section of this publication demonstrates the
 functionality of the `MsQuality` package by presenting two example analysis 
 workflows. The focus is on the data sets of @Cherkaoui2022 and @Amidan2014.
 
-The @Cherkaoui2022 data set is a mass spectrometry metabolomics data set of 
+The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
 180 cancer cell lines obtained via flow injection analysis 
 (TOF, negative ionization mode). The data set comprises a total of 1394 samples.
 
@@ -45,12 +45,12 @@ mzQC framework is extensive, also including metrics that depend on more
 high-level information which might not be readily accessible from .raw or 
 .mzML files, such as pump pressure mean, or that rely on alignment results, 
 like retention time mean shift, signal-to-noise ratio, precursor errors (ppm). 
-These metrics are not currently implemented in `MsQuality`. 
+These metrics are currently not implemented in `MsQuality`. 
 
-The `MsQuality` package is built on the `Spectra` package. Metrics will be 
-calculated based on the information stored in a `Spectra` object, and the 
-respective `dataOrigin` entries are used to distinguish between the mass 
-spectral data of multiple samples.
+The `MsQuality` package relies on the `Spectra` package for data import and
+representation. Quality metrics are calculated based on the information
+(variables) available through a `Spectra` object. The `dataOrigin` variable is
+used to distinguish between the MS data from different samples/files.
 
 We would like to note that these metrics only provide an indication of data 
 quality, and more advanced analytics, such as those provided by `MatrixQCvis`
