@@ -638,9 +638,8 @@ for several of the supported quality metrics.
     unlist() |>
     str_remove(pattern = ".mzML")
 
-## add information if the samples was analyzed (information stored in 
+## add here information on the classification of samples (information stored in 
 ## .samples)
-##add here information on the classification of samples
 .samples_training <- read_excel("../Amidan2014/pr401143e_si_002.xls",
     sheet = "FileS1_TrainingDataset")
 .samples_validation <- read_excel("../Amidan2014/pr401143e_si_003.xls",
@@ -1222,11 +1221,7 @@ df_ram |>
         scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
         facet_wrap(~ parameter, scales = "free_y") +
         scale_y_log10() +
-        theme_classic() ##+
-        ##ylim(100, 800) +
-        ##theme(axis.title = element_text(size = 16), 
-        ##    axis.text = element_text(size = 14),
-        ##    panel.grid = element_blank())
+        theme_classic()
 ```
 
 We observe here that overhead is controlled when running on 2 or more morkers 
@@ -1298,9 +1293,7 @@ gg_mb <- ggplot(df_mb) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_classic() +
     theme(legend.position = "none")
-gg_mb ##+
-    ##theme(axis.title = element_text(size = 16), 
-    ##          axis.text = element_text(size = 14))
+gg_mb 
 ```
 
 The `microbenchmark` package was used to accurately measure the performance 
