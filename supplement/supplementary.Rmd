@@ -302,35 +302,20 @@ the analysis remains acceptable as the data size increases.
 fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 df_ram <- peakRAM(
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 1))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 8))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 16))
 	}
 )
 ```
@@ -358,15 +343,13 @@ df_ram <- df_ram |>
 ## visualize the elapsed time per amount of used workers
 df_ram |>
     filter(parameter != "elapsed time (s)") |>
-    ggplot() +
-        geom_point(aes(x = Function_Call, y = value), size = 3) +
+    ggplot(aes(x = Function_Call, y = value)) +
+        geom_point(size = 3) +
+        geom_line() +
         xlab("number of workers") + ylab("MiB") +
         scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
         facet_wrap(~ parameter, scales = "free_y") +
-        theme_classic() #+
-        #theme(axis.title = element_text(size = 16), 
-        #    axis.text = element_text(size = 14),
-        #    panel.grid = element_blank())
+        theme_classic()
 ```
 
 We observe here that overhead is controlled and the total and peak RAM does not 
@@ -387,27 +370,16 @@ the management of bigger data sets, and to save valuable time in data analysis.
 fls <- dir(.path, full.names = TRUE, pattern = "mzML")
 
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
-df_mb <- microbenchmark(
-    workers_1 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1)),
-    workers_2 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2)),
-    workers_4 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4)),
-    workers_8 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8)),
-    workers_16 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16)), 
+df_mb <- microbenchmark(calculateMetricsFromSpectra(spectra = sps, 
+	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 1)),
+    workers_2 = calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2)),
+    workers_4 = calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4)),
+    workers_8 = calculateMetricsFromSpectra(spectra = sps, 
+	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 8)),
+    workers_16 = calculateMetricsFromSpectra(spectra = sps, 
+	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 16)), 
 	times = 110L, control = list(warmup = 10), check = "equal"
 )
 ```
@@ -440,10 +412,7 @@ ggplot(df_mb) +
     scale_x_continuous(breaks = df_mb[["expr"]]) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     theme_classic() +
-    theme(
-      #axis.title = element_text(size = 16), 
-    #        axis.text = element_text(size = 14), 
-        legend.position = "none")
+    theme(legend.position = "none")
 ```
 
 By parallelizing the calculation of the 
@@ -1205,35 +1174,20 @@ fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     "medianCharge")
 
 df_ram <- peakRAM(
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 1))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 8))
 	},
-    function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(
-			  spectra = sps[sps$dataOrigin == fls_i, ], 
-				metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16))
+    function() {calculateMetricsFromSpectra(spectra = sps, 
+	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 16))
 	}
 )
 ```
@@ -1290,6 +1244,7 @@ reasons we limit the calculation on the first 500 .mzML files.
 fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
 fls <- fls[1:500]
+sps_mb <- sps[sps$dataOrigin %in% fls] 
 
 .metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
     "ticQuartileToQuartileLogRatio", "numberSpectra", 
@@ -1302,26 +1257,16 @@ fls <- fls[1:500]
     "medianCharge")
 
 df_mb <- microbenchmark(
-    workers_1 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 1)),
-    workers_2 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 2)),
-    workers_4 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 4)),
-    workers_8 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 8)),
-    workers_16 = bplapply(fls, function(fls_i) {
-		calculateMetricsFromSpectra(
-		  spectra = sps[sps$dataOrigin == fls_i, ], 
-			metrics = .metrics)}, BPPARAM = MulticoreParam(workers = 16)), 
+    workers_1 = calculateMetricsFromSpectra(spectra = sps_mb, 
+	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 1)),
+    workers_2 = calculateMetricsFromSpectra(spectra = sps_mb, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2)),
+    workers_4 = calculateMetricsFromSpectra(spectra = sps_mb, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4)),
+    workers_8 = calculateMetricsFromSpectra(spectra = sps_mb, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 8)),
+    workers_16 = calculateMetricsFromSpectra(spectra = sps_mb, 
+		metrics = .metrics, BPPARAM = MulticoreParam(workers = 16)), 
 	times = 32L, control = list(warmup = 2), check = "equal"
 )
 ```
