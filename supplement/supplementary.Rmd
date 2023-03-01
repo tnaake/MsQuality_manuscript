@@ -76,6 +76,8 @@ the source .Rmd file under the accompanying
 [GitHub](https://www.github.com/tnaake/MsQuality_manuscript/)
 repository.
 
+A list of the attached pacakges can be found in the Section 
+\ref{sec:Session Info}.
 
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
@@ -85,9 +87,11 @@ BiocStyle::markdown()
 library("knitr")
 knitr::opts_chunk$set(stop_on_error = 1L, fig.pos = "ht")
 suppressPackageStartupMessages(library("Spectra"))
+suppressPackageStartupMessages(library("mzR"))
 suppressPackageStartupMessages(library("MsQuality"))
 suppressPackageStartupMessages(library("peakRAM"))
 suppressPackageStartupMessages(library("microbenchmark"))
+
 knitr::opts_knit$set(root.dir = "/g/huber/users/naake/GitHub/MsQuality_manuscript/supplement/")
 ```
 
@@ -129,43 +133,9 @@ library("MsQuality")
 
 # @Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs
 
-The RAW files were downloaded from the PRIDE database (accession number 
-PXD006512, available at www.ebi.ac.uk/pride/archive) via
-ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2019/05/PXD006512. They were
-then converted into .mzML files using MSConvertGUI 
-(64-bit, v3.0.22015-aadd392) with the setting `peakPicking` set to 
-`vendor msLevel=1-`.
-
-## Prepare the mzML files
-
-
-In order to read the .mzML files into `R` and construct a `Spectra` object, 
-the .mzML files need to be modified to conform to a `mzR`-compatible format. 
-This is necessary because `mzR` is not able to interpret certain entries and 
-references in the original mzML files.
-
-To create `mzR`-compatible .mzML files, the following steps are taken for each 
-.mzML file in the directory:
-
-- Replace any spaces in the file name with an underscore (`"_"`),
-- Within the .mzML file, replace the line starting with \newline
-  `<run defaultInstrumentConfigurationRef=` with `<run`,
-- Within the `mzML` file, delete the lines between (and including) the lines 
-  that start with `<scanWindowList` and `</scanWindowList`
-- Remove the original .mzML file.
-
-These modifications can be automated using the following bash script:
-
-```{bash eval=FALSE, echo=TRUE}
-ls *.mzML | while read mzml_i
-    do
-        new_name="${mzml_i// /_}"
-        cp "$mzml_i" "$new_name"
-        sed 's/<run defaultInstrumentConfigurationRef=.*/<run/g' "$mzml_i" |
-        sed '/^<scanWindowList/,/^<\/scanWindowList/d' > $new_name
-        rm "$mzml_i"
-    done
-```
+The .mzML files were downloaded from the MassIVE database (accession number 
+MSV000087155, available at https://massive.ucsd.edu/) via
+ftp://massive.ucsd.edu/MSV000087155. 
 
 ## Instantiation of the Spectra object
 
@@ -1427,6 +1397,21 @@ pdf("/g/huber/users/naake/GitHub/MsQuality_manuscript/main/figure-main.pdf")
 ggarrange( fig_a, fig_b, fig_c, fig_d, ncol = 2, nrow = 2, labels = "auto", 
           align = "h")
 dev.off()
+```
+
+\newpage
+
+# Session info \label{sec:Session Info}
+
+Information on the attached packages.
+
+```{r sessionInfo, echo = FALSE}
+## remove BLAS, LAPACK, and not attached packages
+ind_BLAS <- which(names(sessionInfo()) == "BLAS")
+ind_LAPACK <- which(names(sessionInfo()) == "LAPACK")
+ind_notattached <- which(names(sessionInfo()) == "loadedOnly")
+inds_remove <- -c(ind_BLAS, ind_LAPACK, ind_notattached)
+utils:::print.sessionInfo(sessionInfo()[inds_remove])
 ```
 
 \newpage
