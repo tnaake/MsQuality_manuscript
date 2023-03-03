@@ -10,9 +10,7 @@ if (!require("Rhdf5lib", quietly = TRUE))
     BiocManager::install("Rhdf5lib", ask = FALSE)
 if (!require("mzR", quietly = TRUE))
     BiocManager::install("mzR", ask = FALSE, upgrade = "always")
-    #remotes::install_github("sneumann/mzR", ref = "feature/updatePwiz_3_0_21263", force = TRUE)
 if (!require("Spectra", quietly = TRUE))
-	##remotes::install_github("rformassspectrometry/Spectra", ref = "RELEASE_3_15")
     BiocManager::install("Spectra", ask = FALSE)
 
 remotes::install_github("tnaake/MsQuality", upgrade = "always")
@@ -48,11 +46,10 @@ fls <- fls[!fls %in% c(
 )]
 
 ## create the Spectra object
-##register(SerialParam(1))
-#sps <- Spectra(fls, backend = MsBackendMzR())
+##sps <- Spectra(fls, backend = MsBackendMzR())
 
 ## save the Spectra object as RDS file
-#saveRDS(sps, file = "Amidan2014/Amidan2014_sps.RDS")
+##saveRDS(sps, file = "Amidan2014/Amidan2014_sps.RDS")
 print("read Spectra object.")
 sps <- readRDS("Amidan2014/Amidan2014_sps.RDS")
 print("finished reading Spectra object.")
@@ -79,30 +76,30 @@ fls <- dataOrigin(sps) |>
 
 df_ram <- peakRAM(
     function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
-				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 1, stop.on.error = TRUE))
-	},
+        calculateMetricsFromSpectra(spectra = sps,
+            metrics = .metrics, msLevel = 1, 
+            BPPARAM = MulticoreParam(workers = 1, stop.on.error = TRUE))
+    },
     function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
-				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 2, stop.on.error = TRUE))
-	},
+        calculateMetricsFromSpectra(spectra = sps,
+            metrics = .metrics, msLevel = 1, 
+            BPPARAM = MulticoreParam(workers = 2, stop.on.error = TRUE))
+    },
     function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
-				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 4, stop.on.error = TRUE))
-	},
+        calculateMetricsFromSpectra(spectra = sps,
+            metrics = .metrics, msLevel = 1, 
+            BPPARAM = MulticoreParam(workers = 4, stop.on.error = TRUE))
+    },
     function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
-				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 8, stop.on.error = TRUE))
-	},
+        calculateMetricsFromSpectra(spectra = sps,
+            metrics = .metrics, msLevel = 1, 
+            BPPARAM = MulticoreParam(workers = 8, stop.on.error = TRUE))
+    },
     function() {
-		bplapply(fls, function(fls_i) {
-			calculateMetricsFromSpectra(spectra = sps[sps$dataOrigin == fls_i, ],
-				metrics = .metrics, msLevel = 1)}, BPPARAM = MulticoreParam(workers = 16, stop.on.error = TRUE))
-	}
+        calculateMetricsFromSpectra(spectra = sps,
+            metrics = .metrics, msLevel = 1, 
+            BPPARAM = MulticoreParam(workers = 16, stop.on.error = TRUE))
+    }
 )
 
 ## save the data.frame
