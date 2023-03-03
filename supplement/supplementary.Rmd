@@ -26,6 +26,8 @@ header-includes:
 
 \beginsupplement
 
+\newpage
+
 The Supplementary Information section of this publication demonstrates the 
 functionality of the `MsQuality` package by presenting two example analysis 
 workflows. The focus is on the data sets of @Cherkaoui2022 and @Amidan2014.
@@ -286,84 +288,21 @@ The metrics `mzAcquisitionRange.max` and `mzAcquisitionRange.min` on the other
 hand (Figure \@ref(fig:metrics-cherkaoui2022) B and C)are not informative for 
 the decision making on excluding/including samples in further analysis steps.
 
-## Calculate Peak RAM Used
+## Performance under parallelization
 
 An important aspect, especially when dealing with large amount of data,
-is scalability and performance when computing the quality metric. In this 
-section, the total and peak RAM is monitored via `peakRAM`. 
-This package allows for a detailed analysis of the memory usage during the 
-execution of code, providing insights on potential performance bottlenecks and 
-opportunities for optimization. By monitoring memory usage, it is possible 
-to determine the scalability of the code and ensure that the performance of
-the analysis remains acceptable as the data size increases.
+is scalability and performance when computing the quality metric. 
 
-```{r df_ram_Cherkaoui2022, eval = FALSE, echo = TRUE}
-.path <- "/scratch/naake/Cherkaoui2022"
-fls <- dir(.path, full.names = TRUE, pattern = "mzML")
-.metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
-df_ram <- peakRAM(
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 1))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 8))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 16))
-	}
-)
-```
+By monitoring parallelization, it is possible 
+to determine the scalability of the computation and ensure that the 
+performance of the analysis remains acceptable as the data size increases.
 
-
-```{r df_ram_saveRDS_Cherkaoui2022, eval = FALSE, echo = FALSE}
-## save the data.frame as RDS object
-saveRDS(df_ram, file = "../Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
-```
-
-```{r df_ram_readRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
-df_ram <- readRDS("../Cherkaoui2022/Cherkaoui2022_df_ram.RDS")
-```
-
-```{r peakRAM-cherkaoui2022, fig.cap = "Total and peak RAM for the calculation of quality metrics of the data set of @Cherkaoui2022 under parallelization (1, 2, 4, 8, and 16 workers).", echo = FALSE}
-df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
-
-df_ram <- df_ram |> 
-    pivot_longer(cols = 2:ncol(df_ram), names_to = "parameter") |>
-    mutate(parameter = case_when(
-        parameter == "Elapsed_Time_sec" ~ "elapsed time (s)",
-        parameter == "Total_RAM_Used_MiB" ~ "used total RAM",
-        parameter == "Peak_RAM_Used_MiB" ~ "used peak RAM"))
-
-## visualize the elapsed time per amount of used workers
-df_ram |>
-    filter(parameter != "elapsed time (s)") |>
-    ggplot(aes(x = Function_Call, y = value)) +
-        geom_point(size = 3) +
-        geom_line() +
-        xlab("number of workers") + ylab("MiB") +
-        scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
-        facet_wrap(~ parameter, scales = "free_y") +
-        theme_classic()
-```
-
-We observe here that overhead is controlled and the total and peak RAM does not 
-scale with the number of cores (Figure \@ref(fig:peakRAM-cherkaoui2022)). 
-In general the total and peak RAM was low and 
-managable by a personal computer.
-
-In another application, we measured the time it takes to evaluate the 
+We measured the time it takes to evaluate the 
 calculation of quality metrics under parallelizing the tasks on
 1, 2, 4, 8, and 16 workers using the `microbenchmark` package. This package 
 allows for precise measurement of the execution time of `R` expressions by 
 repeating the evaluation multiple times and providing detailed summary 
-statistics of the execution times. The parallelization process can help in 
-the management of bigger data sets, and to save valuable time in data analysis.
+statistics of the execution times. 
 
 ```{r df_mb_Cherkaoui2022, echo = TRUE, eval = FALSE}
 .path <- "/scratch/naake/Cherkaoui2022"
@@ -420,6 +359,8 @@ quality metrics across multiple workers, it is possible to significantly
 reduce the execution time, and the `microbenchmark` package was used to 
 accurately measure the performance improvements achieved by parallelization
 (Figure \@ref(fig:microbenchmark-cherkaoui2022)). 
+The parallelization process can help in 
+the management of bigger data sets, and to save valuable time in data analysis.
 
 # @Amidan2014: Signatures for mass spectrometry data quality
 
@@ -1150,7 +1091,7 @@ The Figures \@ref{fig:rtDurationComparison-amidan2014},
 similar values. This is shown by values that show high correlation (points
 locate close to the identity line within the scatter plots).
 
-## Calculate Peak RAM Used
+## Performance under parallelization
 
 Similar to the above-mentioned analysis using the flow injection
 analysis, an important aspect, especially when dealing with large amount of data, 
