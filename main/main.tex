@@ -69,7 +69,7 @@ functionality to calculate, assess, and track quality metrics for mass
 spectrometry-derived spectral data at the per-sample level. 
 The package allows to compute about 40 of the mzQC quality metrics defined by
 the Human Proteome Organization-Proteomics Standards Initiative (HUPO-PSI,
-hupo-psi.github.io/mzQC. These are calculated on low-level MS data
+hupo-psi.github.io/mzQC). These are calculated on low-level MS data
 such as retention times and m/z and associated intensity values.
 
 The package enables tracking and quantification of data quality using 
@@ -78,7 +78,7 @@ are of low quality, such as those with a high number of missing values,
 ahead-of-time termination of chromatographic runs, or low instrument sensitivity. 
 Following the definitions from \cite{Bittremieux2017}, \texttt{MsQuality}
 focuses on the calculation of inter-experiment metrics, which can typically be 
-obtained by summation from an inter-experiment metric. Examples for
+obtained by summation from an intra-experiment metric. Examples for
 intra-experiment metrics are the chromatogram of the total ion current (TIC) 
 over the retention time. Inter-experiment metrics, on the other hand, 
 facilitate the comparison of multiple MS runs or experiments, 
@@ -120,15 +120,19 @@ data quality comparison, storage, and facile exchange.
 
 The versatility of \texttt{MsQuality} in calculating metrics extends to a 
 wide range of applications, including small-scale studies and long-term 
-acquisition of mass spectrometry data. The tool provides consistent results 
-when compared to other data quality tools, such as Quameter \citep{Ma2012} 
-(Fig. \ref{fig:fig1} c) or MatrixQCvis \citep{Naake2022}. 
+acquisition of mass spectrometry data. 
 The utility of \texttt{MsQuality} is demonstrated through two case studies, 
 utilizing a previously published 180 cancer cell line dataset obtained by 
 flow injection analysis \citep{Cherkaoui2022} and a liquid 
 chromatography(LC)-MS dataset of
-the same QC sample \citep{Amidan2014} for long-term quality control 
-(see the Supplementary Data for further details).
+the same QC sample \citep{Amidan2014} for long-term quality control.
+The tool provides consistent results 
+when compared to other data quality tools, such as QuaMeter \citep{Ma2012} 
+(Fig. \ref{fig:fig1} c) or MatrixQCvis \citep{Naake2022}. Correlating the 
+\texttt{MsQuality} metrics to pre-calculated QuaMeter metrics 
+\citep{Amidan2014} showed that 75\% of the analyzed metrics showed Pearson
+correlation coefficients over 0.81 and Spearman correlation coefficients over 
+0.87 (see the Supplementary Data for further details).
 
 \texttt{MsQuality} is implemented as an open-source R package, relying on the
 established \texttt{Spectra} and \texttt{MsExperiment} packages
@@ -139,9 +143,10 @@ representations with low memory footprint. Native parallelization enables a fast
 and scalable calculation of quality metrics (Fig. \ref{fig:fig1} d, 
 see the Supplementary Data for further details).
 
-Finally, \texttt{MsQuality} requires little programmatic interaction to calculate metrics 
+Finally, \texttt{MsQuality} requires little programmatic interaction
 by using only one function call after the instantiation of \texttt{Spectra} or 
-\texttt{MsExperiment} objects.
+\texttt{MsExperiment} objects, thus, is user-friendly 
+to calculate the quality metrics.
 
 
 \section{Conclusion}
