@@ -2,7 +2,7 @@
 title: "MsQuality – an interoperable open-source package for the calculation of standardized quality metrics of mass spectrometry data"
 subtitle: "Supplementary Data"
 author:
-    - Thomas Naake,^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
+    - Thomas Naake^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
     - Johannes Rainer^[Institute for Biomedicine (Affiliated Institute of the University of Lübeck), Eurac Research, Viale Druso 1, 39100 Bolzano, Italy]
     - Wolfgang Huber^[Genome Biology Unit, European Molecular Biology Laboratory, Meyerhofstrasse 1, 69117 Heidelberg, Germany]
 package: MsQuality
@@ -30,15 +30,7 @@ header-includes:
 
 The Supplementary Information section of this publication demonstrates the 
 functionality of the `MsQuality` package by presenting two example analysis 
-workflows. The focus is on the data sets of @Cherkaoui2022 and @Amidan2014.
-
-The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
-180 cancer cell lines obtained via flow injection analysis 
-(TOF, negative ionization mode). The data set comprises a total of 1394 samples.
-
-The @Amidan2014 data set consists of 3400 LC-MS samples of a single QC sample 
-(whole cell lysate of *Shewanella oneidensis*). The QC samples were run on 
-Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
+workflows using the data sets of @Cherkaoui2022 and @Amidan2014.
 
 The `MsQuality` package calculates low-level quality metrics that only require 
 minimal information about the mass spectrometry data: retention time, m/z 
@@ -47,12 +39,30 @@ mzQC framework is extensive, also including metrics that depend on more
 high-level information which might not be readily accessible from .raw or 
 .mzML files, such as pump pressure mean, or that rely on alignment results, 
 like retention time mean shift, signal-to-noise ratio, precursor errors (ppm). 
-These metrics are currently not implemented in `MsQuality`. 
+These metrics are currently not implemented in the current version of 
+`MsQuality`. 
 
 The `MsQuality` package relies on the `Spectra` package for data import and
 representation. Quality metrics are calculated based on the information
 (variables) available through a `Spectra` object. The `dataOrigin` variable is
 used to distinguish between the MS data from different samples/files.
+The Section \ref{sec:env} loads these and other packages into the environment
+of the `R` session in order to run all analyses.
+
+In the following Sections of this Supplementary Information the quality two 
+data sets will be analyzed in more detail:
+
+The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
+180 cancer cell lines obtained via flow injection analysis 
+(TOF, negative ionization mode). The data set comprises a total of 1394 samples.
+Section \ref{sec:Cherkaoui2022} analyzes this data set using the 
+`MsQuality` package.
+
+In Section \ref{sec:Amidan2014} the quality of the @Amidan2014 data set will
+be assessed using the `MsQuality` package. The @Amidan2014 data set consists 
+of 3400 LC-MS samples of a single QC sample 
+(whole cell lysate of *Shewanella oneidensis*). The QC samples were run on 
+Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
 We would like to note that these metrics only provide an indication of data 
 quality, and more advanced analytics, such as those provided by `MatrixQCvis`
@@ -68,8 +78,8 @@ etc.
 In this document, we will (i) create `Spectra` objects from the raw data of the 
 two datasets, (ii) calculate the quality metrics on these data sets, 
 (iii) visualize some of the metrics, and (iv) assess the performance 
-and scalability of the implemented algorithms using the `peakRAM` and 
-`microbenchmark` packages.
+and scalability of the implemented algorithms using the 
+`microbenchmark` package.
 
 While the MsQuality package includes an interactive shiny application to 
 navigate mass spectral data quality, with plots based on the plotly framework, 
@@ -91,13 +101,12 @@ knitr::opts_chunk$set(stop_on_error = 1L, fig.pos = "ht")
 suppressPackageStartupMessages(library("Spectra"))
 suppressPackageStartupMessages(library("mzR"))
 suppressPackageStartupMessages(library("MsQuality"))
-suppressPackageStartupMessages(library("peakRAM"))
 suppressPackageStartupMessages(library("microbenchmark"))
 
 knitr::opts_knit$set(root.dir = "/g/huber/users/naake/GitHub/MsQuality_manuscript/supplement/")
 ```
 
-# Preparation of the environment
+# Preparation of the environment \label{sec:env}
 
 The following analysis employs functions from several `R` packages, primarily 
 the `Spectra` package for representing mass spectrometry spectral data and the 
@@ -105,7 +114,7 @@ the `Spectra` package for representing mass spectrometry spectral data and the
 Additional packages are necessary for data visualization (`ggplot2`, 
 `ggpubr`), data wrangling (`dplyr`, `readxl`, `stringr`, `tibble`, 
 `tidyr`) and performance and scalability analysis
-(`microbenchmark`, `peakRAM`).
+(`microbenchmark`).
 
 To proceed with the analysis, please make sure to load these packages before 
 starting using:
@@ -124,7 +133,6 @@ library("tidyr")
 
 ## load packages for performance and scalability analysis
 library("microbenchmark")
-library("peakRAM")
 
 ## load packages for storing spectral data and calculating quality metrics
 library("Spectra")
@@ -133,7 +141,7 @@ library("MsQuality")
 
 \newpage
 
-# @Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs
+# @Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs \label{sec:Cherkaoui2022}
 
 The .mzML files were downloaded from the MassIVE database (accession number 
 MSV000087155, available at https://massive.ucsd.edu/) via
@@ -280,12 +288,11 @@ samples show a bimodal distribution of the total ion current (TIC).
 Specifically, some of the excluded samples have lower total ion current 
 (TIC) values, which was already noted in the original publication and was the 
 reason for their exclusion from subsequent analysis steps. Figure
-\@ref(fig:metrics-cherkaoui2022) serves as 
+\@ref(fig:metrics-cherkaoui2022) a serves as 
 a visual confirmation of this statement and aids in understanding the data 
 quality of the samples. 
-
 The metrics `mzAcquisitionRange.max` and `mzAcquisitionRange.min` on the other
-hand (Figure \@ref(fig:metrics-cherkaoui2022) B and C)are not informative for 
+hand (Figure \@ref(fig:metrics-cherkaoui2022) (b) and (c)) are not informative for 
 the decision making on excluding/including samples in further analysis steps.
 
 ## Performance under parallelization
@@ -350,7 +357,7 @@ ggplot(df_mb) +
     xlab("number of workers") + ylab("elapsed time (s)") +
     scale_x_continuous(breaks = df_mb[["expr"]]) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
-    theme_classic() +
+    theme_classic() + ylim(0, 60) +
     theme(legend.position = "none")
 ```
 
@@ -362,7 +369,9 @@ accurately measure the performance improvements achieved by parallelization
 The parallelization process can help in 
 the management of bigger data sets, and to save valuable time in data analysis.
 
-# @Amidan2014: Signatures for mass spectrometry data quality
+\newpage
+
+# @Amidan2014: Signatures for mass spectrometry data quality \label{sec:Amidan2014}
 
 
 The RAW files were downloaded from 
@@ -802,7 +811,11 @@ gg_rt_msLevel2 <- .metrics_sps_msLevel2 |>
 
 p <- ggarrange(gg_rt_msLevel1, gg_rt_msLevel2, ncol = 2, nrow = 1, labels = "auto")
 annotate_figure(p, top = text_grob("RT duration (s)"))
+
+cor_rtDuration_p <- cor.test(.metrics_sps_msLevel1[["rtDuration"]], .metrics_sps_msLevel1[["RT_Duration"]], method = "pearson")
+cor_rtDuration_s <- cor.test(.metrics_sps_msLevel1[["rtDuration"]], .metrics_sps_msLevel1[["RT_Duration"]], method = "spearman")
 ```
+
 
 ```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE}
 ## 
@@ -832,6 +845,20 @@ col2 <- annotate_figure(ggarrange(gg_numberSpectra_msLevel2, labels = "b"),
 
 p <- ggarrange(col1, col2, ncol = 2, nrow = 1)
 annotate_figure(p, top = text_grob("number of spectra"))
+
+## calculate correlation
+cor_numberSpectra_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["numberSpectra"]],
+    .metrics_sps_msLevel1[["MS1_Count"]], method = "pearson")
+cor_numberSpectra_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["numberSpectra"]],
+    .metrics_sps_msLevel1[["MS1_Count"]], method = "spearman")
+cor_numberSpectra_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["numberSpectra"]],
+    .metrics_sps_msLevel2[["MS2_Count"]], method = "pearson")
+cor_numberSpectra_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["numberSpectra"]], 
+    .metrics_sps_msLevel2[["MS2_Count"]], method = "spearman")
 ```
 
 ```{r rtOverTicQuantilesComparison-amidan2014, fig.cap = "Scatterplot between quality metrics calculated by `MsQuality` and `QuaMeter`: RT over TIC quantile (`rtOverTicQuantiles`). The corresponding metrics for `QuaMeter` are `RT_TIC_Q1`, `RT_TIC_Q2`, and `RT_TIC_Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (b) 50% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (c) 75% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q3`). (d) 25% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (e) 50% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (f) 75% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q3`).", warning = FALSE, echo = FALSE}
@@ -919,6 +946,44 @@ row2 <- ggarrange(
 p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
 
 annotate_figure(p, top = text_grob("RT over TIC Quantiles"))
+
+
+## calculate correlation
+cor_rt_tic_q1_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.25%"]],
+    .metrics_sps_msLevel1[["RT_TIC_Q1"]], method = "pearson")
+cor_rt_tic_q1_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.25%"]],
+    .metrics_sps_msLevel1[["RT_TIC_Q1"]], method = "spearman")
+cor_rt_tic_q1_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.25%"]],
+    .metrics_sps_msLevel2[["RT_TIC_Q1"]], method = "pearson")
+cor_rt_tic_q1_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.25%"]], 
+    .metrics_sps_msLevel2[["RT_TIC_Q1"]], method = "spearman")
+
+tmp <- .metrics_sps_msLevel1[["RT_TIC_Q1"]] + 
+    .metrics_sps_msLevel1[["RT_TIC_Q2"]]
+cor_rt_tic_q2_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.50%"]], tmp, method = "pearson")
+cor_rt_tic_q2_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.50%"]], tmp, method = "spearman")
+cor_rt_tic_q2_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.50%"]], tmp, method = "pearson")
+cor_rt_tic_q2_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.50%"]], tmp , method = "spearman")
+
+tmp <- .metrics_sps_msLevel1[["RT_TIC_Q1"]] + 
+    .metrics_sps_msLevel1[["RT_TIC_Q2"]] +
+    .metrics_sps_msLevel1[["RT_TIC_Q3"]]
+cor_rt_tic_q3_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.75%"]], tmp, method = "pearson")
+cor_rt_tic_q3_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverTicQuantiles.75%"]], tmp, method = "spearman")
+cor_rt_tic_q3_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.75%"]], tmp, method = "pearson")
+cor_rt_tic_q3_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverTicQuantiles.75%"]], tmp, method = "spearman")
 ```
 
 ```{r rtOverTicQuantilesComparisonOnePlot-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT over TIC quantiles (`rtOverTicQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified by quantiles 25%, 50%, and 75%. (a) Quantiles for MS1 spectra. (b) Quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.show='hide'}
@@ -1062,6 +1127,48 @@ row2 <- ggarrange(
 p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
 
 annotate_figure(p, top = text_grob("RT over MS Quarters"))
+
+## calculate correlation
+cor_rt_msQuarters_q1_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter1"]],
+    .metrics_sps_msLevel1[["RT_MS_Q1"]], method = "pearson")
+cor_rt_msQuarters_q1_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter1"]],
+    .metrics_sps_msLevel1[["RT_MS_Q1"]], method = "spearman")
+cor_rt_msQuarters_q1_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]],
+    .metrics_sps_msLevel2[["RT_MSMS_Q1"]], method = "pearson")
+cor_rt_msQuarters_q1_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]], 
+    .metrics_sps_msLevel2[["RT_MSMS_Q1"]], method = "spearman")
+
+tmp <- .metrics_sps_msLevel1[["RT_MS_Q1"]] +
+    .metrics_sps_msLevel1[["RT_MS_Q2"]]
+cor_rt_msQuarters_q2_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter2"]], tmp, method = "pearson")
+cor_rt_msQuarters_q2_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter2"]], tmp, method = "spearman")
+tmp <- .metrics_sps_msLevel1[["RT_MSMS_Q1"]] +
+    .metrics_sps_msLevel1[["RT_MSMS_Q2"]]
+cor_rt_msQuarters_q2_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter2"]], tmp, method = "pearson")
+cor_rt_msQuarters_q2_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter2"]], tmp, method = "spearman")
+
+tmp <- .metrics_sps_msLevel1[["RT_MS_Q1"]] +
+    .metrics_sps_msLevel1[["RT_MS_Q2"]] +
+    .metrics_sps_msLevel1[["RT_MS_Q3"]]
+cor_rt_msQuarters_q3_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "pearson")
+cor_rt_msQuarters_q3_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
+tmp <- .metrics_sps_msLevel1[["RT_MSMS_Q1"]] +
+    .metrics_sps_msLevel1[["RT_MSMS_Q2"]] +
+    .metrics_sps_msLevel1[["RT_MSMS_Q3"]]
+cor_rt_msQuarters_q3_msLevel2_p <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter3"]], tmp, method = "pearson")
+cor_rt_msQuarters_q3_msLevel2_s <- cor.test(
+    .metrics_sps_msLevel2[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
 ```
 
 ```{r msSignal10xChangeComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS Signal >10x Change (jump, `msSignal10xChange`). The metrics are only calculated from MS1 spectra. One data point is obtained per MS1 spectra and the data points are displayed on the x- and y-axis.", warning = FALSE, echo = FALSE}
@@ -1081,99 +1188,102 @@ p <- .metrics_sps_msLevel1 |>
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
 annotate_figure(p, top = text_grob("MS Signal >10x Change (jump)"))
+
+## calculate correlation
+cor_msSignal10xChange_msLevel1_p <- cor.test(
+    .metrics_sps_msLevel1[["msSignal10xChange"]],
+    as.numeric(.metrics_sps_msLevel1[["IS_1A"]]), method = "pearson")
+cor_msSignal10xChange_msLevel1_s <- cor.test(
+    .metrics_sps_msLevel1[["msSignal10xChange"]],
+    as.numeric(.metrics_sps_msLevel1[["IS_1A"]]), method = "spearman")
 ```
 
-The Figures \@ref{fig:rtDurationComparison-amidan2014},
-\@ref{fig:numberSpectraComparison-amidan2014},
-\@ref{fig:rtOverTicQuantilesComparison-amidan2014}, 
-\@ref{fig:rtOverMsQuartersComparison-amidan2014},
-\@ref{fig:msSignal10xChangeComparison-amidan2014} indicate that the `QuaMeter` and `MsQuality` generally compute
+The Figures \@ref(fig:rtDurationComparison-amidan2014),
+\@ref(fig:numberSpectraComparison-amidan2014),
+\@ref(fig:rtOverTicQuantilesComparison-amidan2014), 
+\@ref(fig:rtOverMsQuartersComparison-amidan2014),
+\@ref(fig:msSignal10xChangeComparison-amidan2014) 
+indicate that the `QuaMeter` and `MsQuality` generally compute
 similar values. This is shown by values that show high correlation (points
-locate close to the identity line within the scatter plots).
+locate close to the identity line within the scatter plots). We provide in 
+Table \@ref(tab:correlation) the Pearson and Spearman correlation coefficients
+of the `MsQuality` metrics with their corresponding `QuaMeter` metrics.
+
+```{r eval = TRUE, echo = FALSE}
+.cols <- c("MsQuality", "QuaMeter", "MS level", "Pearson coef.", "Spearman coef.")
+
+df <- data.frame(rbind(
+    c("rtDuration", "RT_Duration", 1, 
+        round(cor_rtDuration_p$estimate, 3),
+        round(cor_rtDuration_s$estimate, 3)), 
+    c("numberSpectra", "MS1_Count", 1, 
+        round(cor_numberSpectra_msLevel1_p$estimate, 3), 
+        round(cor_numberSpectra_msLevel1_s$estimate, 3)),
+    c("numberSpectra", "MS2_Count", 2,
+        round(cor_numberSpectra_msLevel2_p$estimate, 3), 
+        round(cor_numberSpectra_msLevel2_s$estimate, 3)),
+    c("rtOverTicQuantiles.25%", "RT_TIC_Q1", 1, 
+        round(cor_rt_tic_q1_msLevel1_p$estimate, 3),
+        round(cor_rt_tic_q1_msLevel1_s$estimate, 3)),
+    c("rtOverTicQuantiles.25%", "RT_TIC_Q1", 2, 
+        round(cor_rt_tic_q1_msLevel2_p$estimate, 3),
+        round(cor_rt_tic_q1_msLevel2_s$estimate, 3)),
+    c("rtOverTicQuantiles.50%", "RT_TIC_Q2", 1, 
+        round(cor_rt_tic_q2_msLevel1_p$estimate, 3),
+        round(cor_rt_tic_q2_msLevel1_s$estimate, 3)),
+    c("rtOverTicQuantiles.50%", "RT_TIC_Q2", 2, 
+        round(cor_rt_tic_q2_msLevel2_p$estimate, 3),
+        round(cor_rt_tic_q2_msLevel2_s$estimate, 3)),
+    c("rtOverTicQuantiles.75%", "RT_TIC_Q3", 1, 
+        round(cor_rt_tic_q3_msLevel1_p$estimate, 3),
+        round(cor_rt_tic_q3_msLevel1_s$estimate, 3)),
+    c("rtOverTicQuantiles.75%", "RT_TIC_Q3", 2, 
+        round(cor_rt_tic_q3_msLevel2_p$estimate, 3),
+        round(cor_rt_tic_q3_msLevel2_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter1", "RT_MS_Q1", 1, 
+        round(cor_rt_msQuarters_q1_msLevel1_p$estimate, 3),
+        round(cor_rt_msQuarters_q1_msLevel1_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter1", "RT_MSMS_Q1", 2, 
+        round(cor_rt_msQuarters_q1_msLevel2_p$estimate, 3), 
+        round(cor_rt_msQuarters_q1_msLevel2_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter2", "RT_MS_Q2", 1, 
+        round(cor_rt_msQuarters_q2_msLevel1_p$estimate, 3),
+        round(cor_rt_msQuarters_q2_msLevel1_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter2", "RT_MSMS_Q2", 2,
+        round(cor_rt_msQuarters_q2_msLevel2_p$estimate, 3),
+        round(cor_rt_msQuarters_q2_msLevel2_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter3", "RT_MS_Q3", 1, 
+        round(cor_rt_msQuarters_q3_msLevel1_p$estimate, 3),
+        round(cor_rt_msQuarters_q3_msLevel1_s$estimate, 3)),
+    c("rtOverMsQuarters.Quarter3", "RT_MSMS_Q3", 2,
+        round(cor_rt_msQuarters_q3_msLevel2_p$estimate, 3),
+        round(cor_rt_msQuarters_q3_msLevel2_s$estimate, 3)),
+    c("msSignal10xChange", "IS_1A", 1, 
+        round(cor_msSignal10xChange_msLevel1_p$estimate, 3),
+        round(cor_msSignal10xChange_msLevel1_s$estimate, 3))
+))
+colnames(df) <- .cols
+
+## calculate some statistics on the correlation values
+##quantile(as.numeric(df[, "Pearson coef."]))
+##quantile(as.numeric(df[, "Spearman coef."]))
+
+
+knitr::kable(df, caption = "Pearson and Spearman coefficients for \\texttt{MsQuality} and pre-calculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.98 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label= "correlation")
+```
+
+\newpage 
 
 ## Performance under parallelization
 
 Similar to the above-mentioned analysis using the flow injection
 analysis, an important aspect, especially when dealing with large amount of data, 
 is scalability and performance when computing the quality metric. 
-Again, the total and peakRAM is monitored via `peakRAM`.
 
-```{r df_ram_Amidan2014, eval = FALSE, echo = TRUE}
-.path <- "/scratch/naake/Amidan2014"
-fls <- dir(.path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
-    unique()
-
-.metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
-    "ticQuartileToQuartileLogRatio", "numberSpectra", 
-    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
-    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
-    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
-    "precursorIntensityQuartiles", "precursorIntensityMean", 
-    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
-    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
-    "medianCharge")
-
-df_ram <- peakRAM(
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 1))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 2))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 4))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-		metrics = .metrics, BPPARAM = MulticoreParam(workers = 8))
-	},
-    function() {calculateMetricsFromSpectra(spectra = sps, 
-	    metrics = .metrics, BPPARAM = MulticoreParam(workers = 16))
-	}
-)
-```
-
-```{r df_ram_saveRDS_Amidan2014, eval = FALSE, echo = FALSE}
-## save the data.frame as RDS object
-saveRDS(df_ram, file = "../Amidan2014/Amidan2014_df_ram.RDS")
-```
-
-
-```{r df_ram_readRDS_Amidan2014, eval = TRUE, echo = FALSE}
-df_ram <- readRDS("../Amidan2014/Amidan2014_df_ram.RDS")
-```
-
-```{r peakRAM-amidan2014, fig.cap = "Total and peak RAM for the calculation of quality metrics of the data set of @Amidan2014 under parallelization (1, 2, 4, 8, and 16 workers).", echo = FALSE}
-df_ram[["Function_Call"]] <- c(1, 2, 4, 8, 16)
-
-df_ram <- df_ram |> 
-    pivot_longer(cols = 2:ncol(df_ram), names_to = "parameter") |>
-    mutate(parameter = case_when(
-        parameter == "Elapsed_Time_sec" ~ "elapsed time (s)",
-        parameter == "Total_RAM_Used_MiB" ~ "used total RAM",
-        parameter == "Peak_RAM_Used_MiB" ~ "used peak RAM"))
-
-## visualize the elapsed time per amount of used workers
-df_ram |>
-    filter(parameter != "elapsed time (s)") |>
-    ggplot(aes(x = Function_Call, y = value)) +
-        geom_point(size = 3) +
-        geom_line() +
-        xlab("number of workers") + ylab("MiB") +
-        scale_x_continuous(breaks = df_ram[["Function_Call"]]) +
-        facet_wrap(~ parameter, scales = "free_y") +
-        scale_y_log10() +
-        theme_classic()
-```
-
-We observe here that overhead is controlled when running on 2 or more morkers 
-and, in these cases, the peak and total RAM does not scale with the number of 
-cores (Figure \@ref(fig:peakRAM-amidan2014)). For this application, it is 
-recommended to run the jobs within a cluster/server environment.
-
-Similarly to above, we measure the time it takes to calculate the quality 
+We measure the time it takes to calculate the quality 
 metrics under parallelization of the tasks on 1, 2, 4, 8, and 16 workers 
 using the `microbenchmark` package. For computational
-reasons we limit the calculation on the first 500 .mzML files.
+reasons we limit the calculation to the first 500 .mzML files.
 
 ```{r df_mb_Amidan2014, echo = TRUE, eval = FALSE}
 .path <- "/scratch/naake/Amidan2014"
