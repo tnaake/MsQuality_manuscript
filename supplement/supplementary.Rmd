@@ -54,13 +54,13 @@ data sets will be analyzed in more detail:
 
 The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
 180 cancer cell lines obtained via flow injection analysis 
-(TOF, negative ionization mode). The data set comprises a total of 1394 samples.
+(TOF, negative ionization mode). The data set comprises a total of 1397 samples.
 Section \ref{sec:Cherkaoui2022} analyzes this data set using the 
 `MsQuality` package.
 
 In Section \ref{sec:Amidan2014} the quality of the @Amidan2014 data set will
 be assessed using the `MsQuality` package. The @Amidan2014 data set consists 
-of 3400 LC-MS samples of a single QC sample 
+of 3431 LC-MS samples of a single QC sample 
 (whole cell lysate of *Shewanella oneidensis*). The QC samples were run on 
 Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
@@ -576,17 +576,19 @@ for several of the supported quality metrics.
     as_tibble()
 
 ## for visualization purposes truncate the dataOrigin, the rowname entry
-## will contain 
+## will contain the sample name
 .metrics_sps_msLevel1[["rowname"]] <- .metrics_sps_msLevel1[["rowname"]] |>
     strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
     unlist() |>
-    str_remove(pattern = ".mzML")
+    str_remove(pattern = ".mzML") |>
+    make.names()
 .metrics_sps_msLevel2[["rowname"]] <- .metrics_sps_msLevel2[["rowname"]] |>
     strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
     unlist() |>
-    str_remove(pattern = ".mzML")
+    str_remove(pattern = ".mzML") |>
+    make.names()
 
 ## add here information on the classification of samples (information stored in 
 ## .samples)
@@ -597,10 +599,12 @@ for several of the supported quality metrics.
 .cols <- intersect(colnames(.samples_training), 
     colnames(.samples_validation))
 .samples <- rbind(.samples_training[, .cols], .samples_validation[, .cols])
+.samples[["Dataset"]] <- .samples[["Dataset"]] |> 
+    make.names()
 
-.metrics_sps_msLevel1 <- left_join(.metrics_sps_msLevel1, .samples, 
+.metrics_sps_msLevel1 <- inner_join(.metrics_sps_msLevel1, .samples, 
     by = c("rowname" = "Dataset"), copy = TRUE)
-.metrics_sps_msLevel2 <- left_join(.metrics_sps_msLevel2, .samples, 
+.metrics_sps_msLevel2 <- inner_join(.metrics_sps_msLevel2, .samples, 
     by = c("rowname" = "Dataset"), copy = TRUE)
 ```
 
@@ -789,7 +793,7 @@ the samples. In the following, we will compare the `QuaMeter`-metrics to the
 `MsQuality` metrics to check if `MsQuality` shows concordant results
 compared to `QuaMeter`.
 
-```{r rtDurationComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT duration (`rtDuration`). The corresponding metric for `QuaMeter` is `RT_Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) RT duration for MS1 spectra (`QuaMeter` metric: `RT_Duration`). (b) RT duration for MS2 spectra (`QuaMeter` metric: `RT_Duration`).", echo = FALSE}
+```{r rtDurationComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT duration (`rtDuration`). The corresponding metric for `QuaMeter` is `RT_Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) RT duration for MS1 spectra (`QuaMeter` metric: `RT_Duration`). (b) RT duration for MS2 spectra (`QuaMeter` metric: `RT_Duration`).", echo = FALSE, warning = FALSE}
 ## rtDuration (MsQuality) vs. RT_Duration (QuaMeter)
 gg_rt_msLevel1 <- .metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
@@ -817,7 +821,7 @@ cor_rtDuration_s <- cor.test(.metrics_sps_msLevel1[["rtDuration"]], .metrics_sps
 ```
 
 
-```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE}
+```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE, warning = FALSE, message=FALSE}
 ## 
 ##  numberSpectra (MsQuality) vs. MS1_Count (QuaMeter)
 gg_numberSpectra_msLevel1 <- .metrics_sps_msLevel1 |>
@@ -1208,6 +1212,11 @@ similar values. This is shown by values that show high correlation (points
 locate close to the identity line within the scatter plots). We provide in 
 Table \@ref(tab:correlation) the Pearson and Spearman correlation coefficients
 of the `MsQuality` metrics with their corresponding `QuaMeter` metrics.
+Table \@ref(tab:quantiles) is a higher-level analysis regarding the
+quantiles of Pearson and Spearman correlation coefficients
+between the `MsQuality` and `QuaMeter` metrics. This analysis supports
+the observation that `MsQuality` calculates highly similar metric values as
+75% of the metrics show Pearson/Spearman coefficients of 0.81/0.87 or higher.
 
 ```{r eval = TRUE, echo = FALSE}
 .cols <- c("MsQuality", "QuaMeter", "MS level", "Pearson coef.", "Spearman coef.")
@@ -1264,13 +1273,27 @@ df <- data.frame(rbind(
 ))
 colnames(df) <- .cols
 
+knitr::kable(df, caption = "Pearson and Spearman correlation coefficients between \\texttt{MsQuality} and pre-calculated QuaMeter metrics.", format = "latex", label= "correlation")
+
 ## calculate some statistics on the correlation values
-##quantile(as.numeric(df[, "Pearson coef."]))
-##quantile(as.numeric(df[, "Spearman coef."]))
+.probs <- c(seq(0, 1, 0.1), 0.25, 0.75) |> 
+    sort()
+q_pearson <- quantile(as.numeric(df[, "Pearson coef."]), probs = .probs) |>
+    round(digits = 2)
+q_spearman <- quantile(as.numeric(df[, "Spearman coef."]), probs = .probs) |>
+    round(digits = 2)
+df <- data.frame(
+    Quantile = names(q_pearson),
+    Pearson = q_pearson,
+    Spearman = q_spearman
+)
+rownames(df) <- NULL
+colnames(df)[2:3] <- c("Pearson coef.", "Spearman coef.")
 
+knitr::kable(df, caption = "Quantiles for Pearson and Spearman correlation coefficients for \\texttt{MsQuality} and pre-calculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.97 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label = "quantiles")
 
-knitr::kable(df, caption = "Pearson and Spearman coefficients for \\texttt{MsQuality} and pre-calculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.98 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label= "correlation")
 ```
+
 
 \newpage 
 
