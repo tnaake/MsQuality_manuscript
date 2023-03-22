@@ -215,7 +215,7 @@ https://www.research-collection.ethz.ch/handle/20.500.11850/511784, was used
 to extract information on the samples that were included in the subsequent 
 analysis of the @Cherkaoui2022 study. This information was added to the 
 `.metrics_sps` object, specifically, whether the sample was 
-analyzed (`"yes"`) or excluded (`"no"`). 
+analyzed (`"analyzed"`) or excluded (`"excluded"`). 
 
 A Figure was then created to compare the differences in quality metrics 
 between the analyzed and excluded samples (Figure \@ref(fig:metrics-cherkaoui2022)).
@@ -244,7 +244,7 @@ between the analyzed and excluded samples (Figure \@ref(fig:metrics-cherkaoui202
 .metrics_sps <- .metrics_sps |> 
     mutate(dsCode = sapply(
         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
-    mutate(analyzed = ifelse(dsCode %in% .samples[["dsCode"]], "yes", "no"))
+    mutate(analyzed = ifelse(dsCode %in% .samples[["dsCode"]], "analyzed", "excluded"))
 ```
 
 ```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the sample was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE}
