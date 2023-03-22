@@ -45,7 +45,7 @@ These metrics are currently not implemented in the current version of
 The `MsQuality` package relies on the `Spectra` package for data import and
 representation. Quality metrics are calculated based on the information
 (variables) available through a `Spectra` object. The `dataOrigin` variable is
-used to distinguish between the MS data from different samples/files.
+used to distinguish between the MS data from different measurements/files.
 The Section \ref{sec:env} loads these and other packages into the environment
 of the `R` session in order to run all analyses.
 
@@ -54,26 +54,27 @@ data sets will be analyzed in more detail:
 
 The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
 180 cancer cell lines obtained via flow injection analysis 
-(TOF, negative ionization mode). The data set comprises a total of 1397 samples.
+(TOF, negative ionization mode). The data set comprises a total of 1397 
+measurements.
 Section \ref{sec:Cherkaoui2022} analyzes this data set using the 
 `MsQuality` package.
 
 In Section \ref{sec:Amidan2014} the quality of the @Amidan2014 data set will
 be assessed using the `MsQuality` package. The @Amidan2014 data set consists 
-of 3431 LC-MS samples of a single QC sample 
-(whole cell lysate of *Shewanella oneidensis*). The QC samples were run on 
+of 3431 LC-MS measurements of a single QC sample 
+(whole cell lysate of *Shewanella oneidensis*). The QC sample was measured on 
 Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
 We would like to note that these metrics only provide an indication of data 
 quality, and more advanced analytics, such as those provided by `MatrixQCvis`
-[@Naake2022], should be used before removing low-quality samples from 
+[@Naake2022], should be used before removing low-quality measurements from 
 the analysis. As stated previously [@Bittremieux2017], the type of  QC metrics 
 depend on the type of the sample, e.g. if a single peptide or a complex 
-lysate of proteins is analzed [@Bereman2015,@Koecher2011,@Paulovich2010]. 
+lysate of proteins is analyzed [@Bereman2015,@Koecher2011,@Paulovich2010]. 
 Also, data quality should always be considered in the context of 
 the sample type and experimental settings, i.e. quality metrics should always 
-be compared with regard to the sample type, experimental setup, instrumentation, 
-etc.
+be compared with regard to the same sample type, experimental setup, 
+instrumentation, etc.
 
 In this document, we will (i) create `Spectra` objects from the raw data of the 
 two datasets, (ii) calculate the quality metrics on these data sets, 
@@ -212,13 +213,14 @@ In the analysis of the @Cherkaoui2022 study, the three quality metrics were
 visualized using the `ggplot2` package. The XLSX file metabolomics_180CCL.xlsx,
 downloaded from
 https://www.research-collection.ethz.ch/handle/20.500.11850/511784, was used 
-to extract information on the samples that were included in the subsequent 
+to extract information on the measurements that were included in the subsequent 
 analysis of the @Cherkaoui2022 study. This information was added to the 
-`.metrics_sps` object, specifically, whether the sample was 
+`.metrics_sps` object, specifically, whether the measurement was 
 analyzed (`"analyzed"`) or excluded (`"excluded"`). 
 
 A Figure was then created to compare the differences in quality metrics 
-between the analyzed and excluded samples (Figure \@ref(fig:metrics-cherkaoui2022)).
+between the analyzed and excluded measurements (Figure
+\@ref(fig:metrics-cherkaoui2022)).
 
 ```{r echo = FALSE}
 ## reshape the metrics into long format
@@ -236,18 +238,18 @@ between the analyzed and excluded samples (Figure \@ref(fig:metrics-cherkaoui202
     unlist() |>
     str_remove(pattern = ".mzML")
 
-## add information if the samples was analyzed (information stored in 
-## .samples)
-.samples <- read_excel(
+## add information if the measurement was analyzed or excluded
+## (information stored in .measurements)
+.measurements <- read_excel(
     "../Cherkaoui2022/PrimaryAnalysis/Metabolomics_180CCL.xlsx",
     sheet = "injections")
 .metrics_sps <- .metrics_sps |> 
     mutate(dsCode = sapply(
         strsplit(.metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
-    mutate(analyzed = ifelse(dsCode %in% .samples[["dsCode"]], "analyzed", "excluded"))
+    mutate(analyzed = ifelse(dsCode %in% .measurements[["dsCode"]], "analyzed", "excluded"))
 ```
 
-```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the sample was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE}
+```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the measurement was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE}
 gg_areaUnderTic <- .metrics_sps |>
     filter(name == "areaUnderTic") |>
     ggplot() +
@@ -284,16 +286,17 @@ ggarrange(gg_areaUnderTic, ggplot() + theme_void(),
 ```
 
 Figure \@ref(fig:metrics-cherkaoui2022) demonstrates that the excluded 
-samples show a bimodal distribution of the total ion current (TIC). 
-Specifically, some of the excluded samples have lower total ion current 
+measurements show a bimodal distribution of the total ion current (TIC). 
+Specifically, some of the excluded measurements have lower total ion current 
 (TIC) values, which was already noted in the original publication and was the 
 reason for their exclusion from subsequent analysis steps. Figure
 \@ref(fig:metrics-cherkaoui2022) a serves as 
 a visual confirmation of this statement and aids in understanding the data 
-quality of the samples. 
+quality of the measurements 
 The metrics `mzAcquisitionRange.max` and `mzAcquisitionRange.min` on the other
-hand (Figure \@ref(fig:metrics-cherkaoui2022) (b) and (c)) are not informative for 
-the decision making on excluding/including samples in further analysis steps.
+hand (Figure \@ref(fig:metrics-cherkaoui2022) (b) and (c)) are not informative 
+for the decision making on excluding/including the measurements in further 
+analysis steps.
 
 ## Performance under parallelization
 
@@ -554,14 +557,14 @@ insights on the quality of the data.
 In the analysis of the @Amidan2014 study, the quality metrics were
 visualized using the `ggplot2` package. The XLS files pr401143e_si_002.xls
 and pr401143e_si_003.xls (provided as Supplemental Material of the original
-publication) was used to extract information on the sample quality.
+publication) was used to extract information on the measurement quality.
 This information was added to the `.metrics_sps_msLevel1` and 
 `.metrics_sps_msLevel2` objects.
 
 The Figures \@ref(fig:areaUnderTic-amidan2014), 
 \@ref(fig:areaUnderTicRtQuantiles-amidan2014), and
 \@ref(fig:ticQuartileToQuartileLogRatio-amidan2014) were created as examples 
-to compare the differences between the low- and high-quality samples samples 
+to compare the differences between the low- and high-quality measurements 
 for several of the supported quality metrics.
 
 ```{r join_metrics_and_metadata, echo = FALSE}
@@ -576,7 +579,7 @@ for several of the supported quality metrics.
     as_tibble()
 
 ## for visualization purposes truncate the dataOrigin, the rowname entry
-## will contain the sample name
+## will contain the measurement name
 .metrics_sps_msLevel1[["rowname"]] <- .metrics_sps_msLevel1[["rowname"]] |>
     strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
@@ -590,21 +593,21 @@ for several of the supported quality metrics.
     str_remove(pattern = ".mzML") |>
     make.names()
 
-## add here information on the classification of samples (information stored in 
-## .samples)
-.samples_training <- read_excel("../Amidan2014/pr401143e_si_002.xls",
+## add here information on the classification of measurement (information 
+## stored in .measurements)
+.measurements_training <- read_excel("../Amidan2014/pr401143e_si_002.xls",
     sheet = "FileS1_TrainingDataset")
-.samples_validation <- read_excel("../Amidan2014/pr401143e_si_003.xls",
+.measurements_validation <- read_excel("../Amidan2014/pr401143e_si_003.xls",
     sheet = "FileS2_ValidationDataset")
-.cols <- intersect(colnames(.samples_training), 
-    colnames(.samples_validation))
-.samples <- rbind(.samples_training[, .cols], .samples_validation[, .cols])
-.samples[["Dataset"]] <- .samples[["Dataset"]] |> 
+.cols <- intersect(colnames(.measurements_training), 
+    colnames(.measurements_validation))
+.measurements <- rbind(.measurements_training[, .cols], .measurements_validation[, .cols])
+.measurements[["Dataset"]] <- .measurements[["Dataset"]] |> 
     make.names()
 
-.metrics_sps_msLevel1 <- inner_join(.metrics_sps_msLevel1, .samples, 
+.metrics_sps_msLevel1 <- inner_join(.metrics_sps_msLevel1, .measurements, 
     by = c("rowname" = "Dataset"), copy = TRUE)
-.metrics_sps_msLevel2 <- inner_join(.metrics_sps_msLevel2, .samples, 
+.metrics_sps_msLevel2 <- inner_join(.metrics_sps_msLevel2, .measurements, 
     by = c("rowname" = "Dataset"), copy = TRUE)
 ```
 
@@ -648,7 +651,7 @@ plot_densities <- function(metrics,
 ```
 
 
-```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified for high-quality and low-quality samples as classified in @Amidan2014. (a) Area under TIC for MS1 spectra. (b) Area under TIC for MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE}
+```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Area under TIC for MS1 spectra. (b) Area under TIC for MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE}
 xlim <- c(2.5, 7.5)
 ## area under TIC
 gg_tic_msLevel1 <- plot_densities(metrics = .metrics_sps_msLevel1, 
@@ -662,7 +665,7 @@ annotate_figure(p, top = text_grob("area under TIC (A.U.)"),
     bottom = "RT duration (s, in 10e3)")
 ```
 
-```{r areaUnderTicRtQuantiles-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified for high-quality and low-quality samples as classified in @Amidan2014. (a) 25% quantile for MS1 spectra. (b) 25% quantile for MS2 spectra. (c) 50% quantile for MS1 spectra. (d) 50% quantile for MS2 spectra.E: 75% quantile for MS1 spectra. (f) 75% quantile for MS2 spectra. (g) 100% quantile for MS1 spectra. (h) 100% quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7}
+```{r areaUnderTicRtQuantiles-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for MS1 spectra. (b) 25% quantile for MS2 spectra. (c) 50% quantile for MS1 spectra. (d) 50% quantile for MS2 spectra.E: 75% quantile for MS1 spectra. (f) 75% quantile for MS2 spectra. (g) 100% quantile for MS1 spectra. (h) 100% quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7}
 xlim <- c(2.5, 7.5)
 ## areaUnderTicRtQuantiles
 ## areaUnderTicRtQuantiles 25%
@@ -725,7 +728,7 @@ annotate_figure(p, top = text_grob("area under TIC RT quantile"),
 
 ```
 
-```{r ticQuartileToQuartileLogRatio-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified for high-quality and low-quality samples as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for MS1 spectra. (b) log ratio of quartile 3 to quartile 2 for MS1 spectra. (c) log ratio of quartile 4 to quartile 3 for MS1 spectra. (d) log ratio of quartile 2 to quartile 1 for MS2 spectra. (e) log ratio of quartile 3 to quartile 2 for MS2 spectra. (f) log ratio of quartile 4 to quartile 3 for MS1 spectra.", warning = FALSE, echo = FALSE}
+```{r ticQuartileToQuartileLogRatio-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for MS1 spectra. (b) log ratio of quartile 3 to quartile 2 for MS1 spectra. (c) log ratio of quartile 4 to quartile 3 for MS1 spectra. (d) log ratio of quartile 2 to quartile 1 for MS2 spectra. (e) log ratio of quartile 3 to quartile 2 for MS2 spectra. (f) log ratio of quartile 4 to quartile 3 for MS1 spectra.", warning = FALSE, echo = FALSE}
 
 xlim <- c(2.5, 7.5)
 ## ticQuartileToQuartileLogRatio
@@ -773,10 +776,10 @@ annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"),
 
 The Figures \@ref(fig:areaUnderTic-amidan2014) and
 \@ref(fig:areaUnderTicRtQuantiles-amidan2014) demonstrate that the 
-low-quality samples (`poor`) have 
-lower total ion current (TIC) values compared to high-quality samples (`good`). 
+low-quality measurements (`poor`) have lower total ion current (TIC) values 
+compared to high-quality measurements (`good`). 
 The Figures serve as a visual check to differences in TIC values and aids in 
-understanding the data quality of the samples. It has to be pointed out that 
+understanding the data quality of the measurements. It has to be pointed out that 
 a further stratification (e.g. along the instrument type) might be helpful 
 to further point out differences between the levels of data quality of the
 @Amidan2014 data set.
@@ -789,7 +792,7 @@ set.
 ### Comparison to QuaMeter metrics
 
 The XLS files also contain pre-calculated `QuaMeter` metrics [@Ma2012] for each of 
-the samples. In the following, we will compare the `QuaMeter`-metrics to the
+the measurements. In the following, we will compare the `QuaMeter`-metrics to the
 `MsQuality` metrics to check if `MsQuality` shows concordant results
 compared to `QuaMeter`.
 
@@ -1380,9 +1383,10 @@ reduce the execution time.
 ```{r figure_main, echo = FALSE, message = FALSE, warning=FALSE, results = FALSE, fig.show = "hide"}
 ## combine several plots into one figure for the main part of the manuscript
 
-## gg_tic_msLevel1: metric for classification into good and poor quality samples
+## gg_tic_msLevel1: metric for classification into good and poor quality 
+## measurements
 ## gg_tic75_msLevel1: metric for classification into good and poor quality 
-## samples
+## measurements
 ## gg_rt_tic_msLevel1: comparison between QuaMeter/MsQuality metrics
 ## gg_mb: benchmark of computation using microbenchmark package
 fig_a <- gg_tic_msLevel1 |>
