@@ -39,9 +39,9 @@ techniques are needed to guarantee that the data sets are
 of high quality.\\
 \textbf{Results:} The \texttt{MsQuality} R-package calculates and assesses 
 various quality metrics for mass spectrometry-derived spectral data at the 
-per-sample level. It calculates around 40 low-level quality metrics based on 
+per-measurement level. It calculates around 40 low-level quality metrics based on 
 the controlled vocabulary of the mzQC quality metrics defined by HUPO-PSI. 
-The package helps to identify low-quality samples and track data quality, 
+The package helps to identify low-quality measurements and track data quality, 
 ultimately improving the quality and reproducibility of mass spectrometry 
 data for robust scientific discoveries. \\
 \textbf{Availability:} MsQuality is implemented in R and is available through 
@@ -66,14 +66,14 @@ highest quality, it is imperative to implement appropriate quality control
 
 Here, we introduce the \texttt{MsQuality} R-package, which provides 
 functionality to calculate, assess, and track quality metrics for mass 
-spectrometry-derived spectral data at the per-sample level. 
+spectrometry-derived spectral data at the per-measurement level. 
 The package allows to compute about 40 of the mzQC quality metrics defined by
 the Human Proteome Organization-Proteomics Standards Initiative (HUPO-PSI,
 hupo-psi.github.io/mzQC). These are calculated on low-level MS data
 such as retention times and m/z and associated intensity values.
 
 The package enables tracking and quantification of data quality using 
-multiple metrics even on a large scale and helps to identify samples that 
+multiple metrics even on a large scale and helps to identify measurements that 
 are of low quality, such as those with a high number of missing values, 
 ahead-of-time termination of chromatographic runs, or low instrument sensitivity. 
 Following the definitions from \cite{Bittremieux2017}, \texttt{MsQuality}
@@ -89,7 +89,7 @@ percentile of the TIC.
 \section{Usage scenario and implementation} \label{usagescenario}
 
 \texttt{MsQuality} offers easy-to-use means of evaluating data quality on a 
-per-sample basis, including the identification of low-quality samples 
+per-measurement basis, including the identification of low-quality measurements 
 (e.g. poor intensities, low signal-to-noise ratio), biases and outliers, 
 variations in calibration, and batch and confounding effects within datasets
 (Fig. \ref{fig:fig1} a and b). 
@@ -109,7 +109,7 @@ data quality comparison, storage, and facile exchange.
                 and QuaMeter: RT over TIC quantiles. 
             For (a), (b), and (c), the data points are displayed 
                 as 2D densities and stratified for high-quality and low-quality
-                samples as classified in \cite{Amidan2014} or by the
+                measurements as classified in \cite{Amidan2014} or by the
                 quantiles 25\%, 50\%, and 75\%. Brighter areas correspond to 
                 high 2D density areas.
             (d) Execution time for the calculation of quality metrics of the 
