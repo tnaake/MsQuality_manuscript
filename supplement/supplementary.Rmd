@@ -28,69 +28,63 @@ header-includes:
 
 \newpage
 
-The Supplementary Information section of this publication demonstrates the 
-functionality of the `MsQuality` package by presenting two example analysis 
+This is the Supplementary Information for the publication "FIXME TITLE". It demonstrates  
+functionality of the `MsQuality` package on two example analysis 
 workflows using the data sets of @Cherkaoui2022 and @Amidan2014.
 
 The `MsQuality` package calculates low-level quality metrics that only require 
 minimal information about the mass spectrometry data: retention time, m/z 
 values, and associated intensities. The list of quality metrics provided by the
-mzQC framework is extensive, also including metrics that depend on more 
-high-level information which might not be readily accessible from .raw or 
+mzQC framework @CitationFIXME is extensive, also including metrics that depend on  
+higher level information which might not be readily accessible from .raw or 
 .mzML files, such as pump pressure mean, or that rely on alignment results, 
 like retention time mean shift, signal-to-noise ratio, precursor errors (ppm). 
-These metrics are currently not implemented in the current version of 
-`MsQuality`. 
+Such metrics are currently not implemented in `MsQuality`. 
 
 The `MsQuality` package relies on the `Spectra` package for data import and
-representation. Quality metrics are calculated based on the information
-(variables) available through a `Spectra` object. The `dataOrigin` variable is
+representation. Quality metrics are calculated from the information
+in a `Spectra` object. The `dataOrigin` variable is
 used to distinguish between the MS data from different measurements/files.
-The Section \ref{sec:env} loads these and other packages into the environment
+Section \ref{sec:env} loads these and other packages into the environment
 of the `R` session in order to run all analyses.
 
-In the following Sections of this Supplementary Information the quality two 
-data sets will be analyzed in more detail:
+In subsequent sections of this document the quality of two 
+data sets will be analyzed:
 
-The @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
+- Section \ref{sec:Cherkaoui2022}: the @Cherkaoui2022 data set is a mass spectrometry (MS) metabolomics data set of 
 180 cancer cell lines obtained via flow injection analysis 
 (TOF, negative ionization mode). The data set comprises a total of 1397 
 measurements.
-Section \ref{sec:Cherkaoui2022} analyzes this data set using the 
-`MsQuality` package.
 
-In Section \ref{sec:Amidan2014} the quality of the @Amidan2014 data set will
-be assessed using the `MsQuality` package. The @Amidan2014 data set consists 
+- In Section \ref{sec:Amidan2014}: the @Amidan2014 data set consists 
 of 3431 LC-MS measurements of a single QC sample 
 (whole cell lysate of *Shewanella oneidensis*). The QC sample was measured on 
 Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
-We would like to note that these metrics only provide an indication of data 
-quality, and more advanced analytics, such as those provided by `MatrixQCvis`
-[@Naake2022], should be used before removing low-quality measurements from 
-the analysis. As stated previously [@Bittremieux2017], the type of  QC metrics 
-depend on the type of the sample, e.g. if a single peptide or a complex 
+We note that these quality metrics are indicative, but by themselves might not be sufficient
+for data quality control decision-making, such as removing low-quality measurements, which might require additional
+consideration of more advanced analytics, such as those provided by `MatrixQCvis`
+[@Naake2022]. As stated previously [@Bittremieux2017], the utility of  QC metrics 
+depend on the type of the sample, e.g., on whether a single peptide or a complex 
 lysate of proteins is analyzed [@Bereman2015,@Koecher2011,@Paulovich2010]. 
 Also, data quality should always be considered in the context of 
-the sample type and experimental settings, i.e. quality metrics should always 
+the sample type and experimental settings, i.e., quality metrics should always 
 be compared with regard to the same sample type, experimental setup, 
-instrumentation, etc.
+instrumentation, etc. FIXME: seems like a lot of shallow philosophy and obviousisms here, is this needed for a supplement that should just get to the point and show the demo?
 
-In this document, we will (i) create `Spectra` objects from the raw data of the 
-two datasets, (ii) calculate the quality metrics on these data sets, 
-(iii) visualize some of the metrics, and (iv) assess the performance 
-and scalability of the implemented algorithms using the 
-`microbenchmark` package.
+In this document, we will 
+- create `Spectra` objects from the raw data of the two datasets, 
+- calculate the quality metrics on these data sets, 
+- visualize some of the metrics, and 
+- assess performance and scalability of the implemented algorithms using the `microbenchmark` package.
 
-While the MsQuality package includes an interactive shiny application to 
-navigate mass spectral data quality, with plots based on the plotly framework, 
-this document will present static plots. For full reproducibility, we provide
-the source .Rmd file under the accompanying
-[GitHub](https://www.github.com/tnaake/MsQuality_manuscript/)
-repository.
+Due to journal's publication format, this document presents static plots.
+Note that the `MsQuality` package also includes an interactive shiny application to 
+interactively navigate quality metrics, with plots based on the plotly framework. 
+For reproducibility, we provide the source .Rmd file in the accompanying
+[GitHub](https://www.github.com/tnaake/MsQuality_manuscript/) repository.
 
-A list of the attached pacakges can be found in the Section 
-\ref{sec:Session Info}.
+A list of the attached pacakges can be found in Section \ref{sec:Session Info}.
 
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
@@ -109,6 +103,7 @@ knitr::opts_knit$set(root.dir = "/g/huber/users/naake/GitHub/MsQuality_manuscrip
 
 # Preparation of the environment \label{sec:env}
 
+FIXME: needless and redundant-with-the-code blabla?
 The following analysis employs functions from several `R` packages, primarily 
 the `Spectra` package for representing mass spectrometry spectral data and the 
 `MsQuality` package for calculating quality metrics.
@@ -151,8 +146,9 @@ ftp://massive.ucsd.edu/MSV000087155.
 ## Instantiation of the Spectra object
 
 In the subsequent analysis, a `Spectra` object is instantiated. The operations 
-were executed within a high-performance computing environment, where the modified 
-.mzML files were stored in the directory `Cherkaoui2022`.
+were executed within a high-performance computing environment<!-- FIXME whatever that means... if you need to say this at all, please be concrete, i.e. number of cores, TB RAM, etc. A HPC from 2005 is probably weaker than my current telephone... -->, where the modified<!-- FIXME how modified? --> .mzML files were stored in the directory `Cherkaoui2022`.
+
+<!-- FIXME Can you make the following (i.e. all paths) more portable by using https:// and BiocCache to access the input files, from some persistent location on the web, and if needed store computed results / intermediate files in a tempdir() location? -->
 
 ```{r echo = FALSE}
 setwd("/g/huber/users/naake/GitHub/MsQuality_manuscript/supplement/")
@@ -174,7 +170,7 @@ saveRDS(sps, file = "../Cherkaoui2022/Cherkaoui2022_sps.RDS")
 
 ## Calculate the metrics via `MsQuality`
 
-`MsQuality` utilizes `Spectra` objects that store the spectral data. In 
+`MsQuality` uses the `Spectra` class for storing the spectral data. In 
 this particular case, where the spectral data was obtained via flow injection 
 analysis, metrics that incorporate retention time information are not 
 relevant and the analysis will only focus on the three metrics
@@ -184,13 +180,23 @@ relevant and the analysis will only focus on the three metrics
  - `mzAcquisitionRange`, **m/z acquisition range** (QC:4000138), “Upper and lower limit of m/z values at which spectra are recorded.” [PSI:QC].
 
 
+<!-- FIXME Please here and elsewhere use less cumbersome and bureaucratic language, e.g., replace the following with
+"The metrics are calculated using the function" 
+You may use ChatGPT for help. -->
 The calculation of the metrics is achieved using the function 
 `calculateMetricsFromSpectra`, which takes as input the `Spectra` object, 
 `sps`, and the above-defined metrics. Additionally, optional parameters 
-can be passed to `calculateMetricsFromSpectra` to further specify the 
-calculation, such as the `msLevel` if multiple mass spectra levels are present 
+can be passed to `calculateMetricsFromSpectra` to further control the 
+calculation, such as the parameter `msLevel` if multiple mass spectra levels are present 
 in the `Spectra` object. In the current context, where only MS1 level spectra 
-are stored in the `Spectra` object, specifying the `msLevel` is not necessary.
+are stored in the `Spectra` object, specifying `msLevel` is not necessary.
+
+<!-- FIXME: Why do you use variable names that begin with "." ???
+
+Also, why so many chunks with eval=FALSE? This destroys the reproducibility idea. I'd rather have a vignette
+that only runs with a big computer and needs some time, than one that does not run at all, or needs lots of
+manual twiddling and guessing to get to run.
+-->
 
 ```{r calculateMetrics_Cherkaoui2022, eval = FALSE}
 .metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
@@ -209,6 +215,8 @@ saveRDS(.metrics_sps, file = "../Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
 
 ## Visualization
 
+<!-- FIXME In the following paragraph, the use of the passive voice is confusing, since it is not clear who did what.
+Better switch to active voice. -->
 In the analysis of the @Cherkaoui2022 study, the three quality metrics were
 visualized using the `ggplot2` package. The XLSX file metabolomics_180CCL.xlsx,
 downloaded from
