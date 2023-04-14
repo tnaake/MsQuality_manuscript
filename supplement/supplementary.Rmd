@@ -143,6 +143,49 @@ The .mzML files were downloaded from the MassIVE database (accession number
 MSV000087155, available at https://massive.ucsd.edu/) via
 ftp://massive.ucsd.edu/MSV000087155. 
 
+We use the [BiocFileCache]() package from Bioconductor to download and cache the
+mzML files locally. To this end we first determine below the full file names of
+all mzML files of this data set.
+
+```{r}
+url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/"
+library(curl)
+file_list <- readLines(curl(url, "r"))
+ftp_files <- strsplit(file_list, " +")
+ftp_files <- vapply(
+    ftp_files, function(z) paste0(tail(z, 2), collapse = "%20"), character(1))
+```
+
+With the file names available we next create a *BiocFileCache* instance for
+these files that will take care of downloading the files, if they are not
+already available in the local cache.
+
+```{r, message = FALSE}
+library(BiocFileCache)
+bfc <- BiocFileCache("/home/jo/tmp/Cherkaoui2022", ask = FALSE)
+path <- bfcrpath(bfc, paste0(url, ftp_files[1:10]))
+
+library(Spectra)
+
+
+library(curl)
+url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/20160603151123624-1576262 Batch5_SHP77_2a.mzML"
+url <- sub(" ", "%20", url, fixed = TRUE)
+
+tmpf <- tempfile()
+curl_download(url, tmpf)
+
+library(BiocFileCache)
+bfc <- BiocFileCache(tempdir())
+path <- bfcrpath(bfc, url)
+
+url <- sub(" ", "%20", url, fixed = TRUE)
+bfc <- BiocFileCache(tempdir())
+path <- bfcrpath(bfc, url)
+
+```
+
+
 ## Instantiation of the Spectra object
 
 In the subsequent analysis, a `Spectra` object is instantiated. The operations 
