@@ -138,31 +138,55 @@ The .mzML files were downloaded from the MassIVE database (accession number
 MSV000087155, available at https://massive.ucsd.edu/) via
 ftp://massive.ucsd.edu/MSV000087155. 
 
+We use the [BiocFileCache]() package from Bioconductor to download and cache the
+mzML files locally. To this end we first determine below the full file names of
+all mzML files of this data set.
+
+```{r}
+url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/"
+library(curl)
+file_list <- readLines(curl(url, "r"))
+ftp_files <- strsplit(file_list, " +")
+ftp_files <- vapply(
+    ftp_files, function(z) paste0(tail(z, 2), collapse = " "), character(1))
+```
+
+With the file names available we next create a *BiocFileCache* instance adding
+the files. The *BiocFileCache* will take care of downloading files that are not
+already available in the local cache thus preventing unneeded downloads.
+
+```{r, message = FALSE}
+library(BiocFileCache)
+## FIXME: update the path; every additional result should be saved in there
+cherkaoui <- BiocFileCache("Cherkaoui2022", ask = FALSE)
+path <- bfcrpath(cherkaoui, paste0(url, curl_escape(ftp_files)))
+
+```
+
+These downloaded mzML files can however not be directly loaded because they are
+not fully compliant with the open mzML standard file format (internal references
+to instrumentation configuration are missing). We thus need to process all files
+to remove these incompatible lines from each mzML file. This needs to be done
+(once) using the below unix shell commands that should be executed in the folder
+containing the downloaded files.
+
+```
+sed -i 's/<run defaultInstrumentConfigurationRef=.*/<run/g' *.mzML
+sed -i '/^<scanWindowList/,/^<\/scanWindowList/d' *.mzML
+```
+
+
 ## Instantiation of the Spectra object
 
 In the subsequent analysis, a `Spectra` object is instantiated. The operations 
 were executed within a (high-performance) computing environment (31 cores, 
-64 GB RAM pool for all cores), where the .mzML files were stored in the directory `Cherkaoui2022`.
+64 GB RAM pool for all cores).
 
-<!-- FIXME Can you make the following (i.e. all paths) more portable by using https:// and BiocCache to access the input files, from some persistent location on the web, and if needed store computed results / intermediate files in a tempdir() location? -->
-
-```{r echo = FALSE}
-setwd("/g/huber/users/naake/GitHub/MsQuality_manuscript/supplement/")
-```
-
-```{r create_spectra_Cherkaoui, eval = TRUE, echo = TRUE, cache=TRUE, message=FALSE}
-## obtain the .mzML files 
-path <- "/scratch/naake/Cherkaoui2022/"
-fls <- dir(path, full.names = TRUE, pattern = "mzML")
-
+```{r create_spectra_Cherkaoui, message = FALSE}
 ## create the Spectra object
-sps <- Spectra(fls, backend = MsBackendMzR())
+sps <- Spectra(path, backend = MsBackendMzR())
 ```
 
-```{r sps_saveRDS_Cherkaoui2022, echo = FALSE, eval = TRUE}
-## save the Spectra object as RDS file
-saveRDS(sps, file = "../Cherkaoui2022/Cherkaoui2022_sps.RDS")
-```
 
 ## Calculate the metrics via `MsQuality`
 
@@ -191,34 +215,40 @@ that only runs with a big computer and needs some time, than one that does not r
 manual twiddling and guessing to get to run.
 -->
 
-```{r calculateMetrics_Cherkaoui2022, eval = TRUE, cache=TRUE}
+```{r calculateMetrics_Cherkaoui2022}
 metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 
 metrics_sps <- calculateMetricsFromSpectra(spectra = sps, 
     metrics = metrics)
 ```
 
-```{r metrics_sps_saveRDS_Cherkaoui2022, eval = TRUE, echo=FALSE}
-saveRDS(metrics_sps, file = "../Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
-```
-
-```{r metrics_sps_readRDS_saveRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
-metrics_sps <- readRDS("../Cherkaoui2022/Cherkaoui2022_metrics_sps.RDS")
-```
 
 ## Visualization
 
+We next visualize the three quality metrics using the `ggplot2` package. We
+include also information from the original study @Cherkaoui2022 in particular
+which of the files were included in the final analysis. The results of the study
+are available from this resource: https://doi.org/10.3929/ethz-b-000511784 . 
+We first download and cache the *PrimaryAnalysis.zip* archive that contains all
+results, unzip it to a temporary folder and import the
+*metabolomics_180CCL.xlsx* file.
 
-In the analysis of the @Cherkaoui2022 study, we visualized the three quality 
-metrics using the `ggplot2` package. We used information from the XLSX file
-metabolomics_180CCL.xlsx, downloaded from
-https://www.research-collection.ethz.ch/handle/20.500.11850/511784, to obtain 
-the samples that were included in the subsequent 
-analysis by @Cherkaoui2022. We added this information to the 
-`metrics_sps` object, specifically, whether the measurement was 
-analyzed (`"analyzed"`) or excluded (`"excluded"`). 
+```{r}
+l <- paste0("https://www.research-collection.ethz.ch/bitstream/handle/",
+            "20.500.11850/511784/PrimaryAnalysis.zip?sequence=1&isAllowed=y")
+arch <- bfcrpath(cherkaoui, l)
+unzip(zipfile = arch, files = "PrimaryAnalysis/Metabolomics_180CCL.xlsx",
+      exdir = tempdir())
+measurements <- read_xlsx(
+    file.path(tempdir(), "PrimaryAnalysis/Metabolomics_180CCL.xlsx"),
+    sheet = "injections")
+```
 
-We then created a Figure to compare the differences in quality metrics 
+From this excel sheet we retrieve the information whether a measurements was
+analyzed or ecluded and add this information to the `metrics_sps` object with
+the quality information.
+
+We then create a Figure to compare the differences in quality metrics 
 between the analyzed and excluded measurements (Figure
 \@ref(fig:metrics-cherkaoui2022)).
 
@@ -240,9 +270,6 @@ metrics_sps[["rowname"]] <- metrics_sps[["rowname"]] |>
 
 ## add information if the measurement was analyzed or excluded
 ## (information stored in measurements)
-measurements <- read_excel(
-    "../Cherkaoui2022/PrimaryAnalysis/Metabolomics_180CCL.xlsx",
-    sheet = "injections")
 metrics_sps <- metrics_sps |> 
     mutate(dsCode = sapply(
         strsplit(metrics_sps$rowname, split = "_Batch"), "[", 1)) |>
@@ -307,17 +334,14 @@ By monitoring parallelization, it is possible
 to determine the scalability of the computation and ensure that the 
 performance of the analysis remains acceptable as the data size increases.
 
-We measured the time it takes to evaluate the 
-calculation of quality metrics under parallelizing the tasks on
+We measure below the time it takes to evaluate the 
+calculation of quality metrics by parallelizing the tasks on
 1, 2, 4, 8, and 16 workers using the `microbenchmark` package. This package 
 allows for precise measurement of the execution time of `R` expressions by 
 repeating the evaluation multiple times and providing detailed summary 
 statistics of the execution times. 
 
 ```{r df_mb_Cherkaoui2022, echo = TRUE, eval = FALSE}
-path <- "/scratch/naake/Cherkaoui2022"
-fls <- dir(path, full.names = TRUE, pattern = "mzML")
-
 metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 df_mb <- microbenchmark(calculateMetricsFromSpectra(spectra = sps, 
 	    metrics = metrics, BPPARAM = MulticoreParam(workers = 1)),
@@ -335,11 +359,11 @@ df_mb <- microbenchmark(calculateMetricsFromSpectra(spectra = sps,
 
 ```{r df_mb_saveRDS_Cherkaoui2022, eval = FALSE, echo = FALSE}
 ## save the data.frame
-saveRDS(df_mb, file = "../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
+saveRDS(df_mb, bfcnew(cherkaoui, "cherkaoui / micrbenchmark results"))
 ```
 
 ```{r df_mb_readRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
-df_mb <- readRDS(file = "../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
+df_mb <- readRDS(bfcrpath(cherkaoui, "cherkaoui / micrbenchmark results"))
 ```
 
 ```{r microbenchmark-cherkaoui2022, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Cherkaoui2022 under parallelization (1, 2, 4, 8, and 16 workers)."}
