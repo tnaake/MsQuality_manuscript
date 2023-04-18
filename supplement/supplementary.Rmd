@@ -158,7 +158,7 @@ already available in the local cache thus preventing unneeded downloads.
 ```{r, message = FALSE}
 library(BiocFileCache)
 ## FIXME: update the path; every additional result should be saved in there
-cherkaoui <- BiocFileCache("/home/jo/tmp/Cherkaoui2022", ask = FALSE)
+cherkaoui <- BiocFileCache("Cherkaoui2022", ask = FALSE)
 path <- bfcrpath(cherkaoui, paste0(url, curl_escape(ftp_files)))
 
 ```
