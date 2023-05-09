@@ -111,14 +111,14 @@ storage, reporting and exchange of quality metrics and quality control criteria.
  	        on MS1 spectra; one data point is obtained per MS1 spectrum.
  	        (a) Area under TIC: The area under the total ion chromatogram. 
             (b) Quantiles of area under the total ion
-                chromatogram of the retention time (TIC RT), here, the 75\% quantile. 
+                chromatogram of the retention time (TIC RT), here, the 50\% quantile. 
+  	      For (a) and (b) the data points are displayed 
+                in a beeswarm plot and stratified for high-quality and low-quality
+                measurements as classified in \cite{Amidan2014}.
             (c) Comparison of quality metrics calculated by \texttt{MsQuality} 
-                and QuaMeter: RT over TIC quantiles. 
-            For (a), (b), and (c), the data points are displayed 
-                as 2D densities and stratified for high-quality and low-quality
-                measurements as classified in \cite{Amidan2014} or by the
-                quantiles 25\%, 50\%, and 75\%. Brighter areas correspond to 
-                high 2D density areas.
+                and QuaMeter: RT over TIC quantiles for 50\% quantile. The
+	      data points are displayed as 2D densities. Brighter areas corresond to
+               high 2D density areas.
             (d) Wall-clock execution time for the calculation of quality metrics of the 
                 data set of \cite{Amidan2014} when parallel computing is used 
                 (1, 2, 4, 8, and 16 workers). A.U. arbitrary units.
