@@ -85,6 +85,7 @@ For reproducibility, we provide the source .Rmd file in the accompanying
 [GitHub](https://www.github.com/tnaake/MsQuality_manuscript/) repository.
 
 A list of the attached pacakges can be found in Section \ref{sec:Session Info}.
+We will indicate which parts of this document are reproducible.
 
 ```{r style, echo = FALSE, results = 'asis'}
 BiocStyle::markdown()
@@ -98,7 +99,7 @@ suppressPackageStartupMessages(library("mzR"))
 suppressPackageStartupMessages(library("MsQuality"))
 suppressPackageStartupMessages(library("microbenchmark"))
 
-knitr::opts_knit$set(root.dir = "/g/huber/users/naake/GitHub/MsQuality_manuscript/supplement/")
+#knitr::opts_knit$set(root.dir = "")
 ```
 
 # Preparation of the environment \label{sec:env}
@@ -106,13 +107,14 @@ knitr::opts_knit$set(root.dir = "/g/huber/users/naake/GitHub/MsQuality_manuscrip
 This analysis uses functions from multiple `R` packages, including `Spectra` 
 for representing mass spectrometry spectral data and `MsQuality` for calculating
 quality metrics. Other packages are required for data visualization 
-(`ggplot2`, `ggpubr`), data wrangling (`dplyr`, `readxl`, `stringr`, `tibble`, 
-`tidyr`), and performance and scalability analysis (`microbenchmark`). Before
-starting the analysis, ensure to load these packages.
+(`ggplot2`, `ggbeeswarm`, `ggpubr`), data wrangling (`dplyr`, `readxl`, 
+`stringr`, `tibble`, `tidyr`), and performance and scalability analysis 
+(`microbenchmark`). Before starting the analysis, ensure to load these packages.
 
 ```{r load_package, echo = TRUE, eval = TRUE, warning=FALSE, message=FALSE}
 ## load packages for visualization
 library("ggplot2")
+library("ggbeeswarm")
 library("ggpubr")
 
 ## load packages for data wrangling
@@ -142,7 +144,14 @@ We use the [BiocFileCache]() package from Bioconductor to download and cache the
 mzML files locally. To this end we first determine below the full file names of
 all mzML files of this data set.
 
-```{r}
+All parts in the section 
+*@Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs*
+are reproducible except the parallelization steps in the subsection
+**Performance under parallelization**. For these steps precalculated objects
+are loaded to the environment.
+
+
+```{r set_directory_for}
 url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/"
 library(curl)
 file_list <- readLines(curl(url, "r"))
@@ -155,12 +164,11 @@ With the file names available we next create a *BiocFileCache* instance adding
 the files. The *BiocFileCache* will take care of downloading files that are not
 already available in the local cache thus preventing unneeded downloads.
 
-```{r, message = FALSE}
+```{r biocFileCache_cherkaoui2022, message = FALSE}
 library(BiocFileCache)
-## FIXME: update the path; every additional result should be saved in there
-cherkaoui <- BiocFileCache("Cherkaoui2022", ask = FALSE)
+## every additional result should be saved in there
+cherkaoui <- BiocFileCache("../Cherkaoui2022", ask = FALSE)
 path <- bfcrpath(cherkaoui, paste0(url, curl_escape(ftp_files)))
-
 ```
 
 These downloaded mzML files can however not be directly loaded because they are
@@ -170,7 +178,8 @@ to remove these incompatible lines from each mzML file. This needs to be done
 (once) using the below unix shell commands that should be executed in the folder
 containing the downloaded files.
 
-```
+```{bash}
+cd ../Cherkaoui2022
 sed -i 's/<run defaultInstrumentConfigurationRef=.*/<run/g' *.mzML
 sed -i '/^<scanWindowList/,/^<\/scanWindowList/d' *.mzML
 ```
@@ -182,7 +191,7 @@ In the subsequent analysis, a `Spectra` object is instantiated. The operations
 were executed within a (high-performance) computing environment (31 cores, 
 64 GB RAM pool for all cores).
 
-```{r create_spectra_Cherkaoui, message = FALSE}
+```{r create_spectra_Cherkaoui, message = FALSE, cache = TRUE}
 ## create the Spectra object
 sps <- Spectra(path, backend = MsBackendMzR())
 ```
@@ -210,12 +219,7 @@ in the current context since only MS1 level spectra are stored in the
 `Spectra` object.
 
 
- <!-- Also, why so many chunks with eval=FALSE? This destroys the reproducibility idea. I'd rather have a vignette
-that only runs with a big computer and needs some time, than one that does not run at all, or needs lots of
-manual twiddling and guessing to get to run.
--->
-
-```{r calculateMetrics_Cherkaoui2022}
+```{r calculateMetrics_Cherkaoui2022, cache = TRUE}
 metrics <- c("numberSpectra", "areaUnderTic", "mzAcquisitionRange")
 
 metrics_sps <- calculateMetricsFromSpectra(spectra = sps, 
@@ -263,10 +267,12 @@ metrics_sps <- metrics_sps |>
 ## for visualization purposes truncate the dataOrigin, the rowname entry
 ## will contain 
 metrics_sps[["rowname"]] <- metrics_sps[["rowname"]] |>
-    strsplit(split = "Cherkaoui2022/") |>
-    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    strsplit(split = "_2016") |>
+    lapply(FUN = function(names_i) paste0("2016", names_i[[2]])) |> 
     unlist() |>
-    str_remove(pattern = ".mzML")
+    strsplit(split = "%") |>
+    lapply(FUN = function(names_i) names_i[[1]]) |>
+    unlist()
 
 ## add information if the measurement was analyzed or excluded
 ## (information stored in measurements)
@@ -280,9 +286,10 @@ metrics_sps <- metrics_sps |>
 gg_areaUnderTic <- metrics_sps |>
     filter(name == "areaUnderTic") |>
     ggplot() +
-        geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
-        geom_point(aes(x = analyzed, y = value, col = analyzed), 
-            position = position_jitter(w = 0.2, h = 0), alpha = 0.2) +
+        geom_beeswarm(aes(x = analyzed, y = value, col = analyzed), cex = 0.8, size = 0.001, method = "compactswarm") +
+        #geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
+        #geom_point(aes(x = analyzed, y = value, col = analyzed), 
+        #    position = position_jitter(width = 0.2, height = 0), alpha = 0.2) +
         ylab("area under TIC (A.U.)") +
         theme_classic() +
         theme(axis.title.x = element_blank(), legend.position = "none")
@@ -290,9 +297,10 @@ gg_areaUnderTic <- metrics_sps |>
 gg_mzRange_min <- metrics_sps |>
     filter(name == "mzAcquisitionRange.min") |>
     ggplot() +
-        geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
-        geom_point(aes(x = analyzed, y = value, col = analyzed), 
-            position = position_jitter(w = 0.2, h = 0), alpha = 0.2) +
+        geom_beeswarm(aes(x = analyzed, y = value, col = analyzed), cex = 0.05, size = 0.001, method = "compactswarm") +
+        #geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
+        #geom_point(aes(x = analyzed, y = value, col = analyzed), 
+        #    position = position_jitter(width = 0.2, height = 0), alpha = 0.2) +
         ylab("minimal m/z value") +
         theme_classic() +
         theme(axis.title.x = element_blank(), legend.position = "none")
@@ -300,16 +308,17 @@ gg_mzRange_min <- metrics_sps |>
 gg_mzRange_max <- metrics_sps |>
     filter(name == "mzAcquisitionRange.max") |>
     ggplot() +
-        geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
-        geom_point(aes(x = analyzed, y = value, col = analyzed), 
-            position = position_jitter(w = 0.2, h = 0), alpha = 0.2) +
+        geom_beeswarm(aes(x = analyzed, y = value, col = analyzed), cex = 0.8, size = 0.001, method = "compactswarm") +
+        #geom_violin(aes(x = analyzed, y = value, col = analyzed)) +
+        #geom_point(aes(x = analyzed, y = value, col = analyzed), 
+        #    position = position_jitter(width = 0.2, height = 0), alpha = 0.2) +
         ylab("maximal m/z value") +
         theme_classic() +
         theme(axis.title.x = element_blank(), legend.position = "none")
 
 ggarrange(gg_areaUnderTic, ggplot() + theme_void(), 
     gg_mzRange_min, gg_mzRange_max,
-    ncol = 2, nrow = 2, labels =c("a", "", "b", "c"))
+    ncol = 2, nrow = 2, labels = c("a", "", "b", "c"))
 ```
 
 Figure \@ref(fig:metrics-cherkaoui2022) demonstrates that the excluded 
@@ -359,11 +368,11 @@ df_mb <- microbenchmark(calculateMetricsFromSpectra(spectra = sps,
 
 ```{r df_mb_saveRDS_Cherkaoui2022, eval = FALSE, echo = FALSE}
 ## save the data.frame
-saveRDS(df_mb, bfcnew(cherkaoui, "cherkaoui / micrbenchmark results"))
+saveRDS(df_mb, "../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 ```
 
 ```{r df_mb_readRDS_Cherkaoui2022, eval = TRUE, echo = FALSE}
-df_mb <- readRDS(bfcrpath(cherkaoui, "cherkaoui / micrbenchmark results"))
+df_mb <- readRDS("../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 ```
 
 ```{r microbenchmark-cherkaoui2022, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Cherkaoui2022 under parallelization (1, 2, 4, 8, and 16 workers)."}
@@ -417,6 +426,16 @@ The RAW files were downloaded from
 Subsequently, the RAW files were converted into `.mzML` files using 
 MSConvertGUI (64-bit, v3.0.22015-aadd392) with setting
 `peakPicking` to `vendor msLevel=1-`.
+
+
+The creation of the Figures in the section 
+*@Amidan2014: Signatures for mass spectrometry data quality*
+are reproducible. Due to long computation time or requirement of an 
+environment that enables for parallelization, the creation of the `Spectra` 
+object in the subsection **Instantiation of the Spectra object**, the 
+calculation of the quality metrics in the subsection 
+**Calculate the metrics via `MsQuality`**, and the parallelization steps
+in the subsection **Performance under parallelization** are precomputed. 
 
 ## Instantiation of the Spectra object
 
@@ -594,6 +613,10 @@ The Figures \@ref(fig:areaUnderTic-amidan2014),
 to compare the differences between the low- and high-quality measurements 
 for several of the supported quality metrics.
 
+While the metric `rtDuration` (retention time) is a continuous variable,
+for visualization purposes we will bin the variable to discrete values and 
+will use the measurements over 60 min and 100 min for visualization.
+
 ```{r join_metrics_and_metadata, echo = FALSE}
 ## reshape the metrics into long format
 metrics_sps_msLevel1 <- metrics_sps_msLevel1 |>
@@ -636,44 +659,95 @@ metrics_sps_msLevel1 <- inner_join(metrics_sps_msLevel1, measurements,
     by = c("rowname" = "Dataset"), copy = TRUE)
 metrics_sps_msLevel2 <- inner_join(metrics_sps_msLevel2, measurements, 
     by = c("rowname" = "Dataset"), copy = TRUE)
+
+## in the following bin the retention times
+metrics_sps_msLevel1$rtDuration_new <- ifelse(
+    metrics_sps_msLevel1$rtDuration > 3200 & 
+    metrics_sps_msLevel1$rtDuration < 4000, 3600, 
+    metrics_sps_msLevel1$rtDuration)
+metrics_sps_msLevel1$rtDuration_new <- ifelse(
+    metrics_sps_msLevel1$rtDuration_new > 5600 & 
+    metrics_sps_msLevel1$rtDuration_new < 6400, 6000, 
+    metrics_sps_msLevel1$rtDuration_new)
+metrics_sps_msLevel1$rtDuration_new <- ifelse(
+    metrics_sps_msLevel1$rtDuration_new > 10400 & 
+    metrics_sps_msLevel1$rtDuration_new < 11200, 10800, 
+    metrics_sps_msLevel1$rtDuration_new)
+metrics_sps_msLevel1$rtDuration_new <- ifelse(
+    metrics_sps_msLevel1$rtDuration_new > 14000 & 
+    metrics_sps_msLevel1$rtDuration_new < 14800, 14400, 
+    metrics_sps_msLevel1$rtDuration_new)
+metrics_sps_msLevel1$rtDuration_new <- metrics_sps_msLevel1$rtDuration_new |>
+    as.factor()
+
+metrics_sps_msLevel2$rtDuration_new <- ifelse(
+    metrics_sps_msLevel2$rtDuration > 3200 & 
+    metrics_sps_msLevel2$rtDuration < 4000, 3600, 
+    metrics_sps_msLevel2$rtDuration)
+metrics_sps_msLevel2$rtDuration_new <- ifelse(
+    metrics_sps_msLevel2$rtDuration_new > 5600 & 
+    metrics_sps_msLevel2$rtDuration_new < 6400, 6000, 
+    metrics_sps_msLevel2$rtDuration_new)
+metrics_sps_msLevel2$rtDuration_new <- ifelse(
+    metrics_sps_msLevel2$rtDuration_new > 10400 & 
+    metrics_sps_msLevel2$rtDuration_new < 11200, 10800, 
+    metrics_sps_msLevel2$rtDuration_new)
+metrics_sps_msLevel2$rtDuration_new <- ifelse(
+    metrics_sps_msLevel2$rtDuration_new > 14000 & 
+    metrics_sps_msLevel2$rtDuration_new < 14800, 14400, 
+    metrics_sps_msLevel2$rtDuration_new)
+metrics_sps_msLevel2$rtDuration_new <- metrics_sps_msLevel2$rtDuration_new |>
+    as.factor()
 ```
 
-```{r helper_function_plot_densities, eval = TRUE, echo = FALSE}
+```{r helper_function_plot_beeswarm, eval = TRUE, echo = FALSE}
 library(patchwork)
 
-plot_densities <- function(metrics, 
+plot_beeswarm <- function(metrics, 
     selected_metric = "areaUnderTicRtQuantiles.25%", 
-    ylim = c(0, 1.2e12), xlim = c(2.7, 7)) {
+    ylim = c(0, 1.2e12), 
+    plot_margin_1 = unit(c(-0.1, 0.5, -0.0, 0), "cm"), 
+    plot_margin_2 = unit(c(-0.1, 0.5, -0.0, 0), "cm"), aspect.ratio = 1) {
 
-    .levels <- c("good", "poor")
+    .levels <- c("60 min", "100 min") ## 3600, 6000
+    metrics <- metrics |>
+        mutate(rtDuration_new = as.numeric(as.character(rtDuration_new))) |>
+        mutate(rtDuration_new = rtDuration_new / 60) |>
+        mutate(rtDuration_new = factor(rtDuration_new, levels = c(60, 100),
+                labels = c("60 min", "100 min"))) |>
+        filter(rtDuration_new %in% .levels) |> 
+        filter(Curated_Quality %in% c("good", "poor")) |>
+        filter(!duplicated(rowname)) |>
+            select(all_of(c("rowname", "Curated_Quality", "rtDuration_new", 
+                selected_metric)))
+    
     P <- list()
     
     for (i in seq_along(.levels)) {
-        P[[i]] <- metrics |>
-            filter(!duplicated(rowname)) |>
-            select(rowname, Curated_Quality, rtDuration, 
-                selected_metric) |>
-            filter(Curated_Quality %in% .levels[i]) |>
-            mutate(rtDuration = rtDuration / 60) |>
+        metrics_i <- metrics |>
+            filter(rtDuration_new %in% .levels[i]) |>
             pivot_longer(cols = selected_metric) |>
-            ggplot(aes(x = rtDuration, y = value)) +
-                ##geom_point(alpha = 0.2) +
-                #geom_hex(bins = 10) +
-                stat_bin_2d(bins=12) +
-                ##stat_density_2d(aes(fill = after_stat(level)), geom = "polygon") +
-                facet_wrap(~ Curated_Quality, scales = "fixed") +
-                scale_x_continuous(breaks=seq(50, 250, 100), limits = xlim) +
+            filter(!is.na(value)) |>
+            filter(value != Inf)
+        
+        P[[i]] <- metrics_i |> 
+            ggplot(aes(x = Curated_Quality, y = value, col = Curated_Quality)) +
+                geom_beeswarm(aes(x = Curated_Quality, y = value), method = "compactswarm", cex = 0.8, size = 0.001) +
+                #geom_point(aes(x = Curated_Quality, y = value), 
+                #    position = position_jitter(width = 0.2, height = 0), alpha = 0.05) +
+                facet_grid( ~ rtDuration_new, scales = "free_x") +
+                #geom_violin(scale = "count") +
                 scale_y_continuous(limits = ylim) +
                 theme_classic() +
                 theme(legend.position = "none", axis.title = element_blank(),
-                    plot.margin=unit(c(-0.1, 0.5, -1.9, 0), "cm"))# +
-        #theme(plot.margin = unit(c(0.5,0.5,0.5,-0.5), "cm"))
+                    plot.margin = plot_margin_1) + 
+                theme(aspect.ratio = aspect.ratio)
         
         if (i == 2) 
             P[[i]] <- P[[i]] + 
                 theme(axis.text.y = element_blank(), 
                     axis.ticks.y = element_blank(), 
-                    plot.margin=unit(c(-0.1, 1, -1.9, 0), "cm"))
+                    plot.margin = plot_margin_2)
         P[[i]]
     }
     
@@ -682,56 +756,65 @@ plot_densities <- function(metrics,
 ```
 
 
-```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Area under TIC for MS1 spectra. (b) Area under TIC for MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE}
+```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Area under TIC for MS1 spectra. (b) Area under TIC for MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE}
 xlim <- c(25, 250)
 ## area under TIC
-gg_tic_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-      selected_metric = "areaUnderTic", ylim = c(0, 8e12), xlim = xlim)
-gg_tic_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-      selected_metric = "areaUnderTic", ylim = c(0, 16e10), xlim = xlim) 
+gg_tic_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+      selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
+      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_tic_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+      selected_metric = "areaUnderTic", ylim = c(0, 16e10), 
+      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2) 
 
-p <- ggarrange(gg_tic_msLevel1, gg_tic_msLevel2, ncol = 2, nrow = 1, 
+p <- ggarrange(gg_tic_msLevel1,  gg_tic_msLevel2, ncol = 2, nrow = 1, 
     labels = "auto")
-annotate_figure(p, top = text_grob("area under TIC (A.U.)"),
-    bottom = "RT duration (min)")
+annotate_figure(p, top = text_grob("area under TIC (A.U.)"))
 ```
 
-```{r areaUnderTicRtQuantiles-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for MS1 spectra. (b) 25% quantile for MS2 spectra. (c) 50% quantile for MS1 spectra. (d) 50% quantile for MS2 spectra.E: 75% quantile for MS1 spectra. (f) 75% quantile for MS2 spectra. (g) 100% quantile for MS1 spectra. (h) 100% quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7}
-xlim <- c(25, 250)
+```{r areaUnderTicRtQuantiles-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for MS1 spectra. (b) 25% quantile for MS2 spectra. (c) 50% quantile for MS1 spectra. (d) 50% quantile for MS2 spectra.E: 75% quantile for MS1 spectra. (f) 75% quantile for MS2 spectra. (g) 100% quantile for MS1 spectra. (h) 100% quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7.5}
+
 ## areaUnderTicRtQuantiles
 ## areaUnderTicRtQuantiles 25%
-gg_tic25_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 1.2e12), 
-    xlim = xlim)
-
-gg_tic25_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 3.2e10), 
-    xlim = xlim)
+gg_tic25_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 1.2e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic25_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 3.2e10),
+    plot_margin_1 = unit(c(-0.1, -2, -0.0, -2), "cm"), 
+    plot_margin_2 = unit(c(-0.1, -2, -0.0, -2), "cm"), aspect.ratio = 1)
 
 ## areaUnderTicRtQuantiles 50%
-gg_tic50_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12), 
-    xlim = xlim)
-gg_tic50_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 8e10), 
-    xlim = xlim)
-
+gg_tic50_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic50_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 8e10),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 ## areaUnderTicRtQuantiles 75%
-gg_tic75_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4e12), 
-    xlim = xlim)
-gg_tic75_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4.5e10), 
-    xlim = xlim)
-  
+gg_tic75_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic75_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4.5e10),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
 ## areaUnderTicRtQuantiles 100%
-gg_tic100_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 12e11), 
-    xlim = xlim)
-gg_tic100_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 1.2e10), 
-    xlim = xlim)
+gg_tic100_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 12e11),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic100_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 1.2e10),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 row1 <- ggarrange(
     annotate_figure(ggarrange(gg_tic25_msLevel1, labels = "a"), top = "MS1", 
@@ -754,60 +837,64 @@ row4 <- ggarrange(
     ncol = 2, nrow = 1)
 p <- ggarrange(row1, row2, row3, row4, ncol = 1, nrow = 4, align = "v")
 
-annotate_figure(p, top = text_grob("area under TIC RT quantile"),
-    bottom = "RT duration (min)")
+annotate_figure(p, top = text_grob("area under TIC RT quantile"))
 
 ```
 
-```{r ticQuartileToQuartileLogRatio-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for MS1 spectra.  (f) log ratio of quartile 4 to quartile 3 for MS2 spectra.", warning = FALSE, echo = FALSE}
+```{r ticQuartileToQuartileLogRatio-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for MS1 spectra.  (f) log ratio of quartile 4 to quartile 3 for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7}
 
 xlim <- c(25, 250)
 ## ticQuartileToQuartileLogRatio
 ## ticQuartileToQuartileLogRatio Q2/Q1%
-gg_tic_q2_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5), 
-    xlim = xlim)
-gg_tic_q2_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5), 
-    xlim = xlim)
+gg_tic_q2_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic_q2_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
   
 ## ticQuartileToQuartileLogRatio.Q3/Q2
-gg_tic_q3_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3), 
-    xlim = xlim)
-gg_tic_q3_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3), 
-    xlim = xlim)
+gg_tic_q3_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic_q3_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 ## ticQuartileToQuartileLogRatio.Q4/Q3
-gg_tic_q4_msLevel1 <- plot_densities(metrics = metrics_sps_msLevel1, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(0, 3), 
-    xlim = xlim)
-gg_tic_q4_msLevel2 <- plot_densities(metrics = metrics_sps_msLevel2, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(1.9, 7.8), 
-    xlim = xlim)
+gg_tic_q4_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic_q4_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(1.9, 7.8),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 row1 <- ggarrange(
     annotate_figure(ggarrange(gg_tic_q2_msLevel1, labels = "a"), top = "MS1"),
     annotate_figure(ggarrange(gg_tic_q2_msLevel2, labels = "b"), top = "MS2"), 
-    ncol = 2, nrow = 1) |>
-  annotate_figure(left = "Q2/Q1")
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q2/Q1")
 row2 <- ggarrange(
     annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "c")),
     annotate_figure(ggarrange(gg_tic_q3_msLevel2, labels = "d")), 
-    ncol = 2, nrow = 1) |>
-  annotate_figure(left = "Q3/Q2")
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q3/Q2")
 row3 <- ggarrange(
     annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "e")),
     annotate_figure(ggarrange(gg_tic_q3_msLevel2, labels = "f")), 
-    ncol = 2, nrow = 1) |>
-  annotate_figure(left = "Q4/Q3")
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q4/Q3")
 
 p <- ggarrange(row1, row2, row3, ncol = 1, nrow = 3, align = "v", 
     heights = c(1.1, 1, 1))
 
-annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"),
-    bottom = "RT duration (min)")
+annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"))
 ```
 
 The Figures \@ref(fig:areaUnderTic-amidan2014) and
@@ -832,12 +919,12 @@ the measurements. In the following, we will compare the `QuaMeter`-metrics to th
 `MsQuality` metrics to check if `MsQuality` shows concordant results
 compared to `QuaMeter`.
 
-```{r rtDurationComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT duration (`rtDuration`). The corresponding metric for `QuaMeter` is `RT_Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) RT duration for MS1 spectra (`QuaMeter` metric: `RT_Duration`). (b) RT duration for MS2 spectra (`QuaMeter` metric: `RT_Duration`).", echo = FALSE, warning = FALSE}
+```{r rtDurationComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT duration (`rtDuration`). The corresponding metric for `QuaMeter` is `RT_Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) RT duration for MS1 spectra (`QuaMeter` metric: `RT_Duration`). (b) RT duration for MS2 spectra (`QuaMeter` metric: `RT_Duration`).", echo = FALSE, warning = FALSE}
 ## rtDuration (MsQuality) vs. RT_Duration (QuaMeter)
 gg_rt_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = rtDuration/60, y = RT_Duration/60)) +
-        geom_hex() +
+        geom_bin_2d(bins = 30) +
         xlab("MsQuality (MS1)") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
@@ -847,7 +934,7 @@ gg_rt_msLevel1 <- metrics_sps_msLevel1 |>
 gg_rt_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = rtDuration/60, y = RT_Duration/60)) +
-        geom_hex() +
+        geom_bin_2d(bins = 30) +
         xlab("MsQuality (MS2)") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
@@ -862,13 +949,13 @@ cor_rtDuration_s <- cor.test(metrics_sps_msLevel1[["rtDuration"]], metrics_sps_m
 ```
 
 
-```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed on the x- and y-axis. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE, warning = FALSE, message=FALSE}
+```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE, warning = FALSE, message=FALSE}
 ## 
 ##  numberSpectra (MsQuality) vs. MS1_Count (QuaMeter)
 gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS1_Count)) +
-        geom_hex() +
+        geom_bin_2d(bins = 30) +
         ##geom_point(alpha = 0.2) +
         coord_fixed(ratio = 1) +
         scale_x_continuous(breaks = seq(0, 15100, 5000), limits = c(0, 15100),
@@ -883,7 +970,7 @@ gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
 gg_numberSpectra_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS2_Count)) +
-        geom_hex() +
+        geom_bin_2d(bins = 30) +
         ##geom_point(alpha = 0.2) +
         xlab("MsQuality") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -920,14 +1007,13 @@ cor_numberSpectra_msLevel2_s <- cor.test(
 
 ```{r rtOverTicQuantilesComparison-amidan2014,  fig.cap = "Scatterplot between quality metrics calculated by `MsQuality` and `QuaMeter`: RT over TIC quantile (`rtOverTicQuantiles`). The corresponding metrics for `QuaMeter` are `RT_TIC_Q1`, `RT_TIC_Q2`, and `RT_TIC_Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (b) 50% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (c) 75% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q3`). (d) 25% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (e) 50% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (f) 75% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q3`).", warning = FALSE, echo = FALSE}
 
-
 ## 
 ##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
     ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
@@ -938,7 +1024,7 @@ gg_rt_tic_q1_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
     ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
@@ -950,7 +1036,7 @@ gg_rt_tic_q2_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
@@ -961,7 +1047,7 @@ gg_rt_tic_q2_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
     ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -974,7 +1060,7 @@ gg_rt_tic_q3_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
     ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -986,7 +1072,7 @@ gg_rt_tic_q3_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
     ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -998,13 +1084,13 @@ row1 <- ggarrange(
     annotate_figure(ggarrange(gg_rt_tic_q1_msLevel1, labels = "a"), top = "25%"),
     annotate_figure(ggarrange(gg_rt_tic_q2_msLevel1, labels = "b"), top = "50%"),
     annotate_figure(ggarrange(gg_rt_tic_q3_msLevel1, labels = "c"), top = "75%"),
-    ncol = 3, nrow = 1) |>
+        ncol = 3, nrow = 1) |>
     annotate_figure(left = "MS1")
 row2 <- ggarrange(
     annotate_figure(ggarrange(gg_rt_tic_q1_msLevel2, labels = "d")), 
     annotate_figure(ggarrange(gg_rt_tic_q2_msLevel2, labels = "e")),
     annotate_figure(ggarrange(gg_rt_tic_q3_msLevel2, labels = "f")),
-    ncol = 3, nrow = 1) |>
+        ncol = 3, nrow = 1) |>
     annotate_figure(left = "MS2")
 p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
 annotate_figure(p, top = text_grob("RT over TIC Quantiles"))
@@ -1103,7 +1189,7 @@ annotate_figure(p, top = text_grob("RT over TIC quantiles"))
 gg_rt_msQuarters_q1_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MS_Q1)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1115,7 +1201,7 @@ gg_rt_msQuarters_q2_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_MS_Q2 = RT_MS_Q1 + RT_MS_Q2) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MS_Q2)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1127,7 +1213,7 @@ gg_rt_msQuarters_q3_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_MS_Q3 = RT_MS_Q1 + RT_MS_Q2 + RT_MS_Q3) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MS_Q3)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1139,7 +1225,7 @@ gg_rt_msQuarters_q3_msLevel1 <- metrics_sps_msLevel1 |>
 gg_rt_msQuarters_q1_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MSMS_Q1)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1151,7 +1237,7 @@ gg_rt_msQuarters_q2_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_MSMS_Q2 = RT_MSMS_Q1 + RT_MSMS_Q2) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MSMS_Q2)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1163,7 +1249,7 @@ gg_rt_msQuarters_q3_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT_MSMS_Q3 = RT_MSMS_Q1 + RT_MSMS_Q2 + RT_MSMS_Q3) |>
     ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MSMS_Q3)) +
-        geom_hex() +
+        geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1183,7 +1269,7 @@ row2 <- ggarrange(
     annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel2, labels = "d")), 
     annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel2, labels = "e")),
     annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel2, labels = "f")),
-    ncol = 3, nrow = 1) |>
+        ncol = 3, nrow = 1) |>
     annotate_figure(left = "MS2")
 p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
 
@@ -1232,7 +1318,7 @@ cor_rt_msQuarters_q3_msLevel2_s <- cor.test(
     metrics_sps_msLevel2[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
 ```
 
-```{r msSignal10xChangeComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS Signal >10x Change (jump, `msSignal10xChange`). The metrics are only calculated from MS1 spectra. One data point is obtained per MS1 spectra and the data points are displayed on the x- and y-axis.", warning = FALSE, echo = FALSE}
+```{r msSignal10xChangeComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS Signal >10x Change (jump, `msSignal10xChange`). The metrics are only calculated from MS1 spectra. One data point is obtained per MS1 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas.", warning = FALSE, echo = FALSE}
 
 ##
 ## msSignal10xChange vs. IS-1A (jumps)
@@ -1240,7 +1326,7 @@ p <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(IS_1A = as.numeric(IS_1A)) |>
     ggplot(aes(x = msSignal10xChange, y = IS_1A)) +
-        geom_hex() +
+        geom_bin_2d(bins = 30) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
@@ -1443,29 +1529,66 @@ reduce the execution time.
 ## measurements
 ## gg_rt_tic_msLevel1: comparison between QuaMeter/MsQuality metrics
 ## gg_mb: benchmark of computation using microbenchmark package
-fig_a <- gg_tic_msLevel1 |>
+fig_a <- gg_tic_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+      selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
+      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5) |>
     patchworkGrob() |>
     gridExtra::grid.arrange( 
-        left = text_grob("area under TIC (A.U.)", size = 10, rot = 90), 
-        bottom = text_grob("retention time (s, in 10e3)", size = 10, vjust = -0.4))
-fig_b <- gg_tic50_msLevel1 |>
+        left = text_grob("area under TIC (A.U.)", size = 10, rot = 90))#, 
+        #size = 10, vjust = -0.4)
+fig_b <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5) |>
     patchworkGrob() |>
     gridExtra::grid.arrange( 
-        left = text_grob("area under TIC RT \n quantile (50%)   ", 
-            size = 10, rot = 90, just = c("center", "center")), 
-        bottom = text_grob("retention time (s, in 10e3)", size = 10, vjust = -0.4))
-fig_c <- gg_rt_tic_msLevel1 +
-    xlab("RT over TIC quantiles  (MsQuality)  ") + 
-    ylab("RT over TIC quantiles  (QuaMeter)  ") +
-    theme(axis.title.x = element_text(size = 9),
-        axis.title.y = element_text(size = 9),
-        legend.text = element_text(size = 8))
-fig_d <- gg_mb +
-    theme(axis.title = element_text(size = 10))
+        left = text_grob("area under TIC RT quantile (50%)   ", 
+            size = 10, rot = 90, just = c("center", "center")))#, 
+        #size = 10, vjust = -0.4)
+    
+    
+tmp <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
+    mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
+    select(rowname, `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, `rtOverTicQuantiles.75%`, 
+        RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3)
+tmp <- rbind(
+    tmp |>
+        select(rowname, `rtOverTicQuantiles.25%`, RT_TIC_Q1) |>
+        rename(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1) |>
+        mutate(variable = "25% quantile"),
+    tmp |>
+        select(rowname, `rtOverTicQuantiles.50%`, RT_TIC_Q2) |>
+        rename(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2) |>
+        mutate(variable = "50% quantile"),
+    tmp |>
+        select(rowname, `rtOverTicQuantiles.75%`, RT_TIC_Q3) |>
+        rename(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3) |>
+        mutate(variable = "75% quantile"))
+fig_c <- ggplot(tmp, aes(x = x, y = y)) +
+        facet_wrap(~ variable) +
+        geom_bin_2d(bins = 20) +
+        scale_x_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), 
+            labels = c("0", "0.25", "0.5", "0.75", "1")) +
+        xlab("RT over TIC quantiles (MsQuality)") + 
+        ylab("RT over TIC quantiles (QuaMeter)") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none", 
+            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
 
-pdf("/g/huber/users/naake/GitHub/MsQuality_manuscript/main/figure-main.pdf")
-ggarrange( fig_a, fig_b, fig_c, fig_d, ncol = 2, nrow = 2, labels = "auto", 
-          align = "h")
+fig_d <- gg_mb +
+    coord_fixed(ratio = 0.042) +
+    theme(axis.title = element_text(size = 10), 
+        plot.margin = unit(c(-15, 0, -15, 0), "cm"))
+
+pdf("../main/figure-main.pdf")
+p1 <- ggarrange(fig_a, fig_b, fig_d, ncol = 3, nrow = 1, labels = c("a", "b", "d"),
+    align = "h")
+p2 <- ggarrange(fig_c, ncol = 1, nrow = 1, labels = "c")
+p1 / p2
 dev.off()
 ```
 

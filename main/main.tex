@@ -5,7 +5,6 @@
 \appnotes{Manuscript Category}
 \usepackage{graphicx}
 
-\newcommand{\fixme}[1]{\textcolor{red}{FIXME: #1}}
 \usepackage{hyperref}
 
 \begin{document}
@@ -64,8 +63,7 @@ reproducibility of the obtained data. To ensure that MS data is fit for purpose,
 quality assessment and quality control (QA/QC) need to be performed close
 to data production from raw data \citep{Koecher2011,Bereman2015}. Use of standardized 
 quality metrics described by a controlled vocabulary helps in making QA/QC more 
-comparable 
-across datasets and data producers and increases transparency and 
+comparable across datasets and data producers and increases transparency and 
 trustworthiness of such measures as viewed by data users 
 \citep{Mayer2012,Mayer2013}.
 
@@ -77,7 +75,6 @@ The package provides 40 of the mzQC quality metrics defined by
 the Human Proteome Organization-Proteomics Standards Initiative (HUPO-PSI,
 hupo-psi.github.io/mzQC). These are calculated on low-level MS data
 such as retention times, $m/z$, and associated intensity values.
-
 The package automates tracking and quantification of data quality and 
 helps to integrate these computations in routine workflows, thereby,
 \texttt{MsQuality} facilitates the identification of measurements with low 
@@ -104,9 +101,9 @@ representation in mass spectrometry defined by HUPO-PSI facilitates comparison,
 consistent
 storage, reporting and exchange of quality metrics and quality control criteria.
 
-\begin{figure}[ht!]
+\begin{figure}
     \centering
- 	\includegraphics[scale=0.421]{figure-main}
+ 	\includegraphics[scale=0.421, clip, trim=0 37 0 5, scale = 0.9]{figure-main}
  	  \caption{Examples of \texttt{MsQuality} functionality. Metrics are based
  	        on MS1 spectra; one data point is obtained per MS1 spectrum.
  	        (a) Area under TIC: The area under the total ion chromatogram. 
@@ -116,7 +113,7 @@ storage, reporting and exchange of quality metrics and quality control criteria.
                 in a beeswarm plot and stratified for high-quality and low-quality
                 measurements as classified in \cite{Amidan2014}.
             (c) Comparison of quality metrics calculated by \texttt{MsQuality} 
-                and QuaMeter: RT over TIC quantiles for 50\% quantile. The
+                and QuaMeter: RT over TIC quantiles. The
 	      data points are displayed as 2D densities. Brighter areas corresond to
                high 2D density areas.
             (d) Wall-clock execution time for the calculation of quality metrics of the 
