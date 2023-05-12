@@ -37,8 +37,8 @@ $^{\text{\sf 2}}$ Institute for Biomedicine (Affiliated to the University of L\"
 of mass spectrometry data. There is a need to integrate quality
 assessment and control into data analytic workflows. \\
 \textbf{Results:} The \texttt{MsQuality} package calculates 
-40 low-level quality metrics based on the controlled vocabulary of the mzQC quality
-metrics defined by HUPO-PSI on a single mass spectrometry-based
+40 low-level quality metrics based on the controlled mzQC vocabulary 
+defined by the HUPO-PSI on a single mass spectrometry-based
 measurement of a sample. It helps to identify low-quality measurements and 
 track data quality.  Its use of community-standard quality metrics facilitates
 comparability of
@@ -64,7 +64,7 @@ to data production from raw data \citep{Koecher2011,Bereman2015}. Use of standar
 quality metrics described by a controlled vocabulary helps in making QA/QC more 
 comparable across datasets and data producers and increases transparency and 
 trustworthiness of such measures as viewed by data users 
-\citep{Mayer2012,Mayer2013}.
+\citep{Mayer2012,Mayer2013}. \newpage
 
 Here, we introduce the \texttt{MsQuality} R-package, which provides 
 functionality to calculate, assess, and track quality metrics for mass 
@@ -78,7 +78,7 @@ The package automates tracking and quantification of data quality and
 helps to integrate these computations in routine workflows, thereby,
 \texttt{MsQuality} facilitates the identification of measurements with low 
 quality, including those with a high occurrence of missing values, 
-ahead-of-time termination of chromatographic runs, or low instrument sensitivity.
+ahead-of-time termination of chromatographic runs, or low instrument sensitivity. \newpage
 
 Following the definitions by \cite{Bittremieux2017}, \texttt{MsQuality}
 focuses on the calculation of inter-experiment metrics, which is a
@@ -128,7 +128,9 @@ We demonstrate the utility of \texttt{MsQuality} in two case studies: a
 dataset of 180 cancer cell lines obtained by flow injection analysis
 \citep{Cherkaoui2022} and a liquid chromatography (LC)-MS dataset of the same 
 control sample \citep{Amidan2014} as instance of a long-term quality control 
-usage scenario. The values computed by \texttt{MsQuality}
+usage scenario. \newpage
+
+The values computed by \texttt{MsQuality}
 agree with those of QuaMeter \citep{Ma2012} (Fig. \ref{fig:fig1} c): 
 75\% of the analyzed \texttt{MsQuality} metrics showed Pearson correlation 
 coefficients over 0.81 and Spearman correlation coefficients over 0.87
@@ -186,6 +188,8 @@ for his valuable assistance in locating and understanding the data of
 T.N. conceptualized the project. T.N. and J.R. implemented the algorithms as 
 an R package. T.N. analysed the results. W.H. provided feedback and guidance. 
 T.N., J.R. and W.H. wrote the manuscript.
+
+\newpage
 
 \subsection{Funding}
 
