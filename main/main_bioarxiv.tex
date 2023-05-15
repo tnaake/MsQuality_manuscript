@@ -1,0 +1,263 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+
+\usepackage{authblk}
+
+\usepackage{hyperref}
+\usepackage{natbib}
+
+\begin{document}
+
+
+\title{MsQuality – an interoperable open-source package for the calculation of standardized quality metrics of mass spectrometry data}
+
+\author[1]{Thomas Naake}
+\author[2]{Johannes Rainer}
+\author[1]{Wolfgang Huber}
+
+
+\affil[1]{ Genome Biology Unit, European Molecular Biology Laboratory, Heidelberg, 69117, Germany}
+\affil[2]{ Institute for Biomedicine (Affiliated to the University of L\"ubeck), Eurac Research, Viale Druso 1, 39100 Bolzano, Italy}
+%$^{\text{\sf 1}}$ Genome Biology Unit, European Molecular Biology Laboratory, Heidelberg, 69117, Germany \\
+%$^{\text{\sf 2}}$ Institute for Biomedicine (Affiliated to the University of L\"ubeck), Eurac Research, Viale Druso 1, 39100 Bolzano, Italy}
+
+\date{}
+
+\maketitle
+
+\abstract{
+\textbf{Motivation:} Multiple factors can impact accuracy and reproducibility
+of mass spectrometry data. There is a need to integrate quality
+assessment and control into data analytic workflows. \\
+\textbf{Results:} The \texttt{MsQuality} package calculates 
+40 low-level quality metrics based on the controlled mzQC vocabulary defined by the HUPO-PSI on a single mass spectrometry-based
+measurement of a sample. It helps to identify low-quality measurements and 
+track data quality.  Its use of community-standard quality metrics facilitates
+comparability of
+quality assessment and control (QA/QC) criteria across datasets.\\
+\textbf{Availability:} The R package \texttt{MsQuality} is available through Bioconductor at \newline
+https://bioconductor.org/packages/MsQuality.\\
+\textbf{Contact:} \href{naake@embl.de}{naake@embl.de}\\
+\textbf{Supplementary information:} Supplementary data are available online.}
+
+
+%\keywords{quality control, mass spectrometry, metabolomics, proteomics, R}
+
+~\newline 
+
+Mass spectrometry (MS) is a versatile analytical technique that has been adopted
+in a variety of disciplines, including proteomics, metabolomics, and lipidomics, 
+enabling the identification and quantification of a wide range of molecules. 
+Obtaining high-quality data from mass spectrometry experiments can be a 
+challenging task, as numerous factors can impact the accuracy and 
+reproducibility of the obtained data. To ensure that MS data is fit for purpose, 
+quality assessment and quality control (QA/QC) need to be performed close
+to data production from raw data \citep{Koecher2011,Bereman2015}. Use of standardized 
+quality metrics described by a controlled vocabulary helps in making QA/QC more 
+comparable across datasets and data producers and increases transparency and 
+trustworthiness of such measures as viewed by data users 
+\citep{Mayer2012,Mayer2013}.
+
+Here, we introduce the \texttt{MsQuality} R-package, which provides 
+functionality to calculate, assess, and track quality metrics for mass 
+spectrometry-derived spectral data of a single mass-spectrometry-based 
+measurement of a sample. 
+The package provides 40 of the mzQC quality metrics defined by
+the Human Proteome Organization-Proteomics Standards Initiative (HUPO-PSI,
+hupo-psi.github.io/mzQC). These are calculated on low-level MS data
+such as retention times, $m/z$, and associated intensity values.
+The package automates tracking and quantification of data quality and 
+helps to integrate these computations in routine workflows, thereby,
+\texttt{MsQuality} facilitates the identification of measurements with low 
+quality, including those with a high occurrence of missing values, 
+ahead-of-time termination of chromatographic runs, or low instrument sensitivity.
+
+Following the definitions by \cite{Bittremieux2017}, \texttt{MsQuality}
+focuses on the calculation of inter-experiment metrics, which is a
+summarization of an intra-experiment metric. Examples for
+intra-experiment metrics are the chromatogram of the total ion current (TIC) 
+over the retention time. Inter-experiment metrics, on the other hand, 
+facilitate the comparison of multiple MS runs or experiments, 
+e.g., via longitudinal analysis of quality metrics, such as the
+fractions of the total retention time required to accumulate a given
+percentile of the TIC.
+
+\section{Usage scenario and implementation} \label{usagescenario}
+
+\texttt{MsQuality} offers easy-to-use means of evaluating data quality on a
+per-measurement basis, including the identification of low-quality measurements,
+biases and outliers, variations in calibration, and batch and confounding effects within
+datasets (Fig. \ref{fig:fig1} a and b). Its use of community standards for data
+representation in mass spectrometry defined by HUPO-PSI facilitates comparison, 
+consistent
+storage, reporting and exchange of quality metrics and quality control criteria.
+
+\begin{figure}
+    \centering
+ 	\includegraphics[scale=0.421, clip, trim=0 37 0 5, scale = 1.8]{figure-main}
+ 	  \caption{Examples of \texttt{MsQuality} functionality. Metrics are based
+ 	        on MS1 spectra; one data point is obtained per MS1 spectrum.
+ 	        (a) Area under TIC: The area under the total ion chromatogram. 
+            (b) Quantiles of area under the total ion
+                chromatogram of the retention time (TIC RT), here, the 50\% quantile. 
+  	      For (a) and (b) the data points are displayed 
+                in a beeswarm plot and stratified for high-quality and low-quality
+                measurements as classified in \cite{Amidan2014}.
+            (c) Comparison of quality metrics calculated by \texttt{MsQuality} 
+                and QuaMeter: RT over TIC quantiles. The
+	      data points are displayed as 2D densities. Brighter areas corresond to
+               high 2D density areas.
+            (d) Wall-clock execution time for the calculation of quality metrics of the 
+                data set of \cite{Amidan2014} when parallel computing is used 
+                (1, 2, 4, 8, and 16 workers). A.U. arbitrary units.
+    } \label{fig:fig1}
+\end{figure}
+
+The versatility of \texttt{MsQuality} in calculating metrics extends to a wide range of
+applications, from small-scale studies to long-term acquisition of mass spectrometry
+data, e.g. a core facility running an instrument for months and years. 
+We demonstrate the utility of \texttt{MsQuality} in two case studies: a 
+dataset of 180 cancer cell lines obtained by flow injection analysis
+\citep{Cherkaoui2022} and a liquid chromatography (LC)-MS dataset of the same 
+control sample \citep{Amidan2014} as instance of a long-term quality control 
+usage scenario. The values computed by \texttt{MsQuality}
+agree with those of QuaMeter \citep{Ma2012} (Fig. \ref{fig:fig1} c): 
+75\% of the analyzed \texttt{MsQuality} metrics showed Pearson correlation 
+coefficients over 0.81 and Spearman correlation coefficients over 0.87
+(see the Supplementary Data for further details).
+
+\texttt{MsQuality} is implemented as an GPL-3-licensed open-source R package, 
+building upon the established \texttt{Spectra} and \texttt{MsExperiment} packages
+\citep{Rainer2022} to provide and represent the MS data. Thus, \texttt{MsQuality} 
+supports a large variety of data input formats
+as well as analyses of very large experiments through the use of data
+representations with low memory footprint. Native parallelization enables a fast
+and scalable calculation of quality metrics (Fig. \ref{fig:fig1} d, 
+see the Supplementary Data for further details).
+
+Finally, \texttt{MsQuality} requires little programmatic interaction and is designed to be
+user-friendly.  After the instantiation of \texttt{Spectra} or \texttt{MsExperiment}
+object, a single function call is needed to calculate the quality metrics.
+
+
+\section{Conclusion}
+
+The \texttt{MsQuality} R-package provides functionality to calculate, assess, 
+and track quality metrics for mass spectrometry-derived spectral data. 
+It offers easy-to-use means of evaluating data quality on a per-measurement 
+basis, enabling researchers the identification of low-quality measurements.
+By using standardized quality metrics via the controlled vocabulary of HUPO-PSI,
+\texttt{MsQuality} helps to make QA/QC more comparable across datasets and 
+data producers.
+The implementation of \texttt{MsQuality}'s metric calculation is designed
+to be user-friendly and streamlined and requires little programmatic 
+interaction, facilitating reproducible calculation and evaluation of data 
+quality metrics.
+\texttt{MsQuality} contributes to the expanding list of 
+tools that use the \texttt{Spectra}/\texttt{MsExperiment} framework 
+\citep{Rainer2022} to address various stages in the analysis pipeline of 
+mass spectrometry data. By building upon this extensive ecosystem for 
+mass spectrometry data, 
+\texttt{MsQuality} enables researchers to create seamless analysis workflows 
+for rapid, efficient, and standardized evaluation of MS data quality, 
+ultimately leading to more robust scientific discoveries in mass spectrometry
+workflows.
+
+
+\section{Acknowledgements}
+
+We acknowledge feedback from Friedemann Ringwald, Hagen Gegner, and 
+Torsten M\"uller on usability of 
+\texttt{MsQuality} and all developers and maintainers of the R/Bioconductor 
+packages \texttt{MsQuality} is built upon. We would like to thank Nicola Zamboni
+for his valuable assistance in locating and understanding the data of 
+\citet{Cherkaoui2022}. 
+
+\subsection{Author contributions statement}
+
+T.N. conceptualized the project. T.N. and J.R. implemented the algorithms as 
+an R package. T.N. analysed the results. W.H. provided feedback and guidance. 
+T.N., J.R. and W.H. wrote the manuscript.
+
+\subsection{Funding}
+
+This work was supported by the Bundesministerium für Bildung und Forschung 
+[grant agreement no. 161L0212E].
+
+Conflict of Interest: none declared.
+
+
+
+
+\begin{thebibliography}{}
+
+\bibitem[Amidan \textit{et~al}., 2014]{Amidan2014}
+Amidan, B.G. \textit{et~al} (2014) Signatures for mass spectrometry data
+quality.
+\textit{Proteome Research}, \textbf{13}, 2215--2222.
+
+\bibitem[Bereman, 2015]{Bereman2015}
+Bereman, M.S. (2015) Tools for Monitoring System Suitability in LC MS/MS
+Centric Proteomic Experiments.
+\textit{Proteomics}, \textbf{15}, 891--902.
+
+\bibitem[Bittremieux \textit{et~al}., 2017]{Bittremieux2017}
+Bittremieux, W. \textit{et~al} (2017) Computational quality control tools for
+mass spectrometry proteomics.
+\textit{Proteomics}, \textbf{17}, 1--11.
+
+\bibitem[Cherkaoui \textit{et~al}., 2022]{Cherkaoui2022}
+Cherkaoui, S. \textit{et~al} (2022) A functional analysis of 180 cancer cell
+lines reveals conserved intrinsic metabolic programs.
+\textit{Molecular Systems Biology}, \textbf{18}, e11033.
+
+\bibitem[K\"ocher \textit{et~al}., 2011]{Koecher2011}
+K\"ocher, T. \textit{et~al} (2011) Quality control in LC-MS/MS.
+\textit{Proteomics and Systems Biology}, \textbf{11}, 1026--1030.
+
+% \bibitem[Paulovich \textit{et~al}., 2010]{Paulovich2010}
+% Paulovich, A.G. \textit{et~al} (2010) Interlaboratory Study Characterizing a 
+% Yeast Performance Standard for Benchmarking LC-MS Platform Performance.
+% \textit{Molecular \& Cellular Proteomics}, \textbf{9}, 242--254.
+
+\bibitem[Ma \textit{et~al}., 2012]{Ma2012}
+Ma, Z.-Q. \textit{et~al} (2012) QuaMeter: Multivendor Performance Metrics
+for LC–MS/MS Proteomics Instrumentation.
+\textit{Analytical Chemistry}, \textbf{84}, 5845--5850.
+
+\bibitem[Mayer \textit{et~al}., 2012]{Mayer2012}
+Mayer, G. \textit{et~al} (2012) Controlled vocabularies and ontologies in 
+proteomics: overview, principles and practice.
+\textit{Biochim Biophys Acta}, \textbf{1844}, 98--107.
+
+\bibitem[Mayer \textit{et~al}., 2013]{Mayer2013}
+Mayer, G. \textit{et~al} (2013) The HUPO proteomics standards initiative - 
+mass spectrometry controlled vocabulary.
+\textit{Database}, \textbf{2013}, bat009.
+
+
+% \bibitem[Naake \textit{et~al}., 2022]{Naake2022}
+% Naake, T. \textit{et~al} (2022) MatrixQCvis: shiny-based interactive data
+% quality exploration for omics data.
+% \textit{Bioinformatics}, \textbf{38}, 1181--1182.
+
+\bibitem[Rainer \textit{et~al}., 2022]{Rainer2022}
+Rainer, J. \textit{et~al} (2022) A Modular and Expandable Ecosystem for Metabolomics Data Annotation in R.
+\textit{Metabolites}, \textbf{12}, 173.
+
+\end{thebibliography}
+
+
+%\bibliographystyle{natbib}
+%\bibliographystyle{achemnat}
+%\bibliographystyle{plainnat}
+%\bibliographystyle{abbrv}
+%\bibliographystyle{bioinformatics}
+
+%\bibliographystyle{plain}
+
+\bibliography{../supplement/document.bib}
+
+\end{document}
+ 
