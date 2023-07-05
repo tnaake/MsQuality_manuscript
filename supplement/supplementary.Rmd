@@ -84,7 +84,7 @@ interactively navigate quality metrics, with plots based on the plotly framework
 For reproducibility, we provide the source .Rmd file in the accompanying
 [GitHub](https://www.github.com/tnaake/MsQuality_manuscript/) repository.
 
-A list of the attached pacakges can be found in Section \ref{sec:Session Info}.
+A list of the attached packages can be found in Section \ref{sec:Session Info}.
 We will indicate which parts of this document are reproducible.
 
 ```{r style, echo = FALSE, results = 'asis'}
@@ -142,7 +142,7 @@ ftp://massive.ucsd.edu/MSV000087155.
 
 We use the [BiocFileCache]() package from Bioconductor to download and cache the
 mzML files locally. To this end we first determine below the full file names of
-all mzML files of this data set.
+all .mzML files of this data set.
 
 All parts in the section 
 *@Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs*
@@ -171,10 +171,10 @@ cherkaoui <- BiocFileCache("../Cherkaoui2022", ask = FALSE)
 path <- bfcrpath(cherkaoui, paste0(url, curl_escape(ftp_files)))
 ```
 
-These downloaded mzML files can however not be directly loaded because they are
-not fully compliant with the open mzML standard file format (internal references
+These downloaded .mzML files can however not be directly loaded because they are
+not fully compliant with the open .mzML standard file format (internal references
 to instrumentation configuration are missing). We thus need to process all files
-to remove these incompatible lines from each mzML file. This needs to be done
+to remove these incompatible lines from each .mzML file. This needs to be done
 (once) using the below unix shell commands that should be executed in the folder
 containing the downloaded files.
 
@@ -249,7 +249,7 @@ measurements <- read_xlsx(
 ```
 
 From this excel sheet we retrieve the information whether a measurements was
-analyzed or ecluded and add this information to the `metrics_sps` object with
+analyzed or excluded and add this information to the `metrics_sps` object with
 the quality information.
 
 We then create a Figure to compare the differences in quality metrics 
@@ -909,13 +909,13 @@ to further point out differences between the levels of data quality of the
 
 The Figure \@ref(fig:ticQuartileToQuartileLogRatio-amidan2014) on the other 
 hand does not indicate differences between data quality and might 
-not be indicate of data quality for the quality issues of the @Amidan2014 data 
+not be indicative for the quality issues of the @Amidan2014 data 
 set.
 
 ### Comparison to QuaMeter metrics
 
-The XLS files also contain pre-calculated `QuaMeter` metrics [@Ma2012] for each of 
-the measurements. In the following, we will compare the `QuaMeter`-metrics to the
+The XLS files also contain precalculated `QuaMeter` metrics [@Ma2012] for each of 
+the measurements. In the following, we will compare the `QuaMeter` metrics to the
 `MsQuality` metrics to check if `MsQuality` shows concordant results
 compared to `QuaMeter`.
 
@@ -1416,7 +1416,7 @@ df <- data.frame(rbind(
 ))
 colnames(df) <- .cols
 
-knitr::kable(df, caption = "Pearson and Spearman correlation coefficients between \\texttt{MsQuality} and pre-calculated QuaMeter metrics.", format = "latex", label= "correlation")
+knitr::kable(df, caption = "Pearson and Spearman correlation coefficients between \\texttt{MsQuality} and precalculated QuaMeter metrics.", format = "latex", label= "correlation")
 
 ## calculate some statistics on the correlation values
 probs <- c(seq(0, 1, 0.1), 0.25, 0.75) |> 
@@ -1433,7 +1433,7 @@ df <- data.frame(
 rownames(df) <- NULL
 colnames(df)[2:3] <- c("Pearson coef.", "Spearman coef.")
 
-knitr::kable(df, caption = "Quantiles for Pearson and Spearman correlation coefficients for \\texttt{MsQuality} and pre-calculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.97 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label = "quantiles")
+knitr::kable(df, caption = "Quantiles for Pearson and Spearman correlation coefficients for \\texttt{MsQuality} and precalculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.97 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label = "quantiles")
 
 ```
 
