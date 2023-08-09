@@ -38,3 +38,5 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 *.mzML
+Amidan2014/Amidan2014_sps.RDS
+Amidan2014/Amidan2014_sps_filtered.RDS
