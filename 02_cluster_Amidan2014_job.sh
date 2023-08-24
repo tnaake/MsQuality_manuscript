@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -A huber                	# group to which you belong
 #SBATCH -N 1                        # number of nodes
-#SBATCH -n 31                       # number of cores
+#SBATCH -n 3                        # number of cores
 #SBATCH --mem 128G                  # memory pool for all cores
-#SBATCH -t 14-0:00:00                # runtime limit (D-HH:MM:SS)
+#SBATCH -t 14-0:00:00               # runtime limit (D-HH:MM:SS)
 #SBATCH -o slurm.%N.%j.out          # STDOUT
 #SBATCH -e slurm.%N.%j.err          # STDERR
 #SBATCH --mail-type=END,FAIL        # notifications for job done & fail
