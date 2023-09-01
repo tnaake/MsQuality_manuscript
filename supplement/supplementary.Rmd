@@ -137,7 +137,7 @@ library("MsQuality")
 
 The following list gives a brief explanation on the available metrics. Further 
 information may be found at the 
-[HUPO-PSI mzQC project page](https://github.com/HUPO-PSI/mzQC)  or in the 
+[HUPO-PSI mzQC project page](https://github.com/HUPO-PSI/mzQC) or in the 
 respective help file for the quality metric (accessible by e.g. entering
 `?chromatographyDuration` to the R console). 
 We also give here explanation on how the metric is calculated in `MsQuality`. 
@@ -149,7 +149,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   Longer duration may indicate a better chromatographic separation of compounds 
   which depends, however, also on the sampling/scan rate of the MS instrument. 
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the retention time associated to the `Spectra` object is obtained,
     (2) the maximum and the minimum of the retention time is obtained, 
     (3) the difference between the maximum and the minimum is calculated and returned. 
@@ -163,7 +163,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   significant portion of the run.
   
   The metric is calculated as follows: 
-    (1) the `Spectra` object is ordered according to the retention time,  
+    (1) the `Spectra` object is ordered according to the retention time,
     (2) the cumulative sum of the ion count is calculated (TIC), 
     (3) the quantiles are calculated according to the `probs` argument, 
         e.g. when `probs` is set to `c(0, 0.25, 0.5, 0.75, 1)` the 
@@ -182,11 +182,11 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   chromatographic separation. For MS1 scans, the values are expected to be in 
   a similar range across samples of the same type.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the retention time duration of the whole `Spectra` object is determined 
         (taking into account all the MS levels), 
     (2) the `Spectra` object is filtered according to the MS level and 
-        subsequently ordered according to the retention time  
+        subsequently ordered according to the retention time,
     (3) the MS events are split into four (approximately) equal parts, 
     (4) the relative retention time is calculated (using the retention time 
         duration from (1) and taking into account the minimum retention time), 
@@ -200,11 +200,11 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   chromatographic separation. For MS2 scans, the comparability of the values 
   depends on the acquisition mode and settings to select ions for fragmentation.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the retention time duration of the whole `Spectra` object is determined 
         (taking into account all the MS levels), 
     (2) the `Spectra` object is filtered according to the MS level and 
-        subsequently ordered according to the retention time  
+        subsequently ordered according to the retention time,
     (3) the MS events are split into four (approximately) equal parts, 
     (4) the relative retention time is calculated (using the retention time 
         duration from (1) and taking into account the minimum retention time), 
@@ -216,15 +216,15 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   one to the next scan, produced when each MS1 TIC is subtracted from the 
   preceding MS1 TIC. The metric's value triplet represents the log ratio of the 
   TIC-change Q2 to Q1, Q3 to Q2, TIC-change-max to Q3" [PSI:MS], 
-  `mode = "TIC_change"`,  `relativeTo = "previous"`, `msLevel = 1L`;
+  `mode = "TIC_change"`, `relativeTo = "previous"`, `msLevel = 1L`;
   The metric informs about the dynamic range of the acquisition along the 
   chromatographic separation.This metric evaluates the stability (similarity) 
   of MS1 TIC values from scan to scan along the LC run. High log ratios 
   representing very large intensity differences between pairs of scans might 
   be due to electrospray instability or presence of a chemical contaminant.
   
-  The metric is calculated as follows:  
-    (1) the TIC (`ionCount`) of the  `Spectra` object is calculated 
+  The metric is calculated as follows:
+    (1) the TIC (`ionCount`) of the `Spectra` object is calculated 
         per scan event (with spectra ordered by retention time), 
     (2) the differences between TIC values are calculated between subsequent 
         scan events,
@@ -241,7 +241,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   of the TIC values for one LC-MS run. Within an experiment, with the same 
   LC setup, values should be comparable between samples.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the TIC (`ionCount`) of the `Spectra` object is calculated 
         per scan event (with spectra ordered by retention time),
     (2) the TIC values between subsequent scan events are taken
@@ -263,7 +263,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   An unusual low number may indicate incomplete sampling/scan rate of the MS 
   instrument, low sample volume and/or failed injection of a sample.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the number of the spectra are obtained (`length` of `Spectra`) and 
         returned.
@@ -284,7 +284,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   An unusual low range may indicate incomplete sampling and/or a premature or 
   failed LC run.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the retention time values of the features within the `Spectra` 
         object are obtained, 
@@ -301,7 +301,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained, 
-    (3) the intensity values of the features are obtained via the ion count,  
+    (3) the intensity values of the features are obtained via the ion count, 
     (4) the signal jumps/declines of the intensity values with the two 
         subsequent intensity values is calculated,
     (5) the signal jumps by a factor of ten or more are counted and returned.
@@ -363,7 +363,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are obtained, 
-    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+    (3) the 25\%, 50\%, and 75\% quantile of the precursor intensity values are 
         obtained (`NA` values are removed) and returned.
 - *precursorIntensityMean*, **MS2 precursor intensity distribution mean** 
   (MS:4000117), "From the distribution of MS2 precursor intensities, the mean." 
@@ -372,7 +372,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   of the acquisition.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained, 
     (3) the mean of the precursor intensity values is obtained 
@@ -384,7 +384,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   the acquisition.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained,
     (3) the standard deviation of precursor intensity values is obtained 
@@ -402,7 +402,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   `identificationLevel = "identified"`, `msLevel = 1L`;
   The m/z distribution informs about the dynamic range of the acquisition.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the precursor m/z values are obtained, 
     (3) the median value is returned (`NA`s are removed).
@@ -420,7 +420,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   Longer duration may indicate a better chromatographic separation of compounds 
   which depends, however, also on the sampling/scan rate of the MS instrument.
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the retention time values are obtained, 
     (3) the interquartile range is obtained from the values and returned
@@ -438,7 +438,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   `identificationLevel = "identified"`;
   Higher rates may indicate a more efficient sampling and identification. 
   
-  The metric is calculated as follows:  
+  The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the retention time values are obtained, 
     (3) the 25\% and 75\% quantiles are obtained from the retention time values
@@ -468,7 +468,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   dynamic range and/or in the sample content.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the `Spectra` object is ordered according to the retention time, 
     (3) the 0\%, 25\%, 50\%, 75\%, and 100\% quantiles of the retention time 
         values are obtained, 
@@ -530,7 +530,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   
   The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level, 
-    (2) the `Spectra` object is ordered according to the retention time,  
+    (2) the `Spectra` object is ordered according to the retention time,
     (3) the number of features in the `Spectra` object is obtained and 
         the number for half of the features is calculated,
     (4) iterate through the features (always by taking the neighbouring
@@ -564,7 +564,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   The metric is calculated as follows:
     (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are obtained, 
-    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+    (3) the 25\%, 50\%, and 75\% quantile of the precursor intensity values are 
         obtained (`NA` values are removed) and returned.
 - *precursorIntensityQuartiles*, 
   **unidentified MS2 precursor intensity distribution Q1, Q2, Q3** (MS:4000162), 
@@ -581,7 +581,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
     (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained, 
-    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+    (3) the 25\%, 50\%, and 75\% quantile of the precursor intensity values are 
         obtained (`NA` values are removed) and returned.
 - *precursorIntensityMean*, 
   **identified MS2 precursor intensity distribution mean** (MS:4000163), 
@@ -597,7 +597,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   identifiability.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained, 
     (3) the mean of the precursor intensity values is obtained 
@@ -613,8 +613,8 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   The metric informs about the dynamic range of the acquisition in relation 
   to identifiability.
   
-  The metric is calculated as follows:  
-    (1) the `Spectra` object is filtered according to the MS level,  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained, 
     (3) the mean of the precursor intensity values is obtained 
@@ -631,7 +631,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   identifiability.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained,
     (3) the standard deviation of precursor intensity values is obtained 
@@ -648,7 +648,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   identifiability.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the intensity of the precursor ions within the `Spectra` object are 
         obtained,
     (3) the standard deviation of precursor intensity values is obtained 
@@ -689,7 +689,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   preference for longer peptides.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the precursor charge is obtained, 
     (3) the number of precursors with charge 3+ is divided by the number of 
         precursors with charge 2+ and the ratio is returned.
@@ -705,7 +705,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
   preference for longer peptides in relation to identifiability.
   
   The metric is calculated as follows:
-    (1) the `Spectra` object is filtered according to the MS level,  
+    (1) the `Spectra` object is filtered according to the MS level,
     (2) the precursor charge is obtained, 
     (3) the number of precursors with charge 3+ is divided by the number of 
         precursors with charge 2+ and the ratio is returned.
@@ -791,6 +791,8 @@ Currently, all quality metrics can be calculated for both `Spectra` and
 An up-to-date list can be found in the vignette of the package via 
 Bioconductor. 
 
+\newpage
+
 # Quick start to the package 
 
 For demonstration purposes, we apply here the `MsQuality` package on the 
@@ -798,7 +800,8 @@ For demonstration purposes, we apply here the `MsQuality` package on the
 LC-MS/MS DIA (SWATH) and one a LC-MS/MS DDA file.
 
 ```{r define_files_toy_data}
-fls <- dir(system.file("TripleTOF-SWATH", package = "msdata"), full.names = TRUE)
+fls <- dir(system.file("TripleTOF-SWATH", package = "msdata"), 
+    full.names = TRUE)
 ```
 
 In a next step, we create a `Spectra` object from the two .mzML files using 
@@ -811,7 +814,7 @@ sps <- Spectra(fls, backend = MsBackendMzR())
 The `Spectra` object is given to the `calculateMetricsFromSpectra` function.
 We are interested in the metrics (`"chromatographyDuration"`), 
 (`"numberSpectra"`), and (`"areaUnderTic"`). The metrics are defined by the
-`metrics` vector.  
+`metrics` vector. 
 We further specify that the metrics should be calculated on MS1 spectra 
 (`msLevel = 1`).
 
@@ -904,9 +907,13 @@ this particular case, where the spectral data was obtained via flow injection
 analysis, metrics that incorporate retention time information are not 
 relevant and the analysis will only focus on the three metrics
 
- - `numberSpectra`, **Number of MS1 spectra** (QC:4000059), “The number of MS1 events in the run.” [PSI:QC];
- - `areaUnderTic`, **Area under TIC** (QC:4000077), “The area under the total ion chromatogram.” [PSI:QC];
- - `mzAcquisitionRange`, **m/z acquisition range** (QC:4000138), “Upper and lower limit of m/z values at which spectra are recorded.” [PSI:QC].
+ - *numberSpectra*, **Number of MS1 spectra** (MS:4000059), 
+   “The number of MS1 events in the run.” [PSI:MS];
+ - *areaUnderTic*, **Area under TIC** (MS:4000155), 
+   “The area under the total ion chromatogram.” [PSI:MS];
+ - *mzAcquisitionRange*, **m/z acquisition range** (MS:4000069), 
+   “Upper and lower limit of m/z precursor values at which MSn spectra are 
+   recorded.” [PSI:MS].
 
 
 The metrics are calculated using the function 
@@ -939,10 +946,10 @@ results, unzip it to a temporary folder and import the
 
 ```{r cache = FALSE}
 l <- paste0("https://www.research-collection.ethz.ch/bitstream/handle/",
-            "20.500.11850/511784/PrimaryAnalysis.zip?sequence=1&isAllowed=y")
+    "20.500.11850/511784/PrimaryAnalysis.zip?sequence=1&isAllowed=y")
 arch <- bfcrpath(cherkaoui, l)
 unzip(zipfile = arch, files = "PrimaryAnalysis/Metabolomics_180CCL.xlsx",
-      exdir = tempdir())
+    exdir = tempdir())
 measurements <- read_xlsx(
     file.path(tempdir(), "PrimaryAnalysis/Metabolomics_180CCL.xlsx"),
     sheet = "injections")
@@ -1717,7 +1724,7 @@ p <- ggarrange(row1, row2, row3, row4, ncol = 1, nrow = 4, align = "v")
 annotate_figure(p, top = text_grob("area under TIC RT quantile (A.U.)"))
 ```
 
-```{r ticQuartileToQuartileLogRatio-MS1-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS1 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS1 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS1 spectra.  (f) log ratio of quartile 4 to quartile 3 for unfiltered MS1 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
+```{r ticQuartileToQuartileLogRatio-MS1-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS1 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS1 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS1 spectra. (f) log ratio of quartile 4 to quartile 3 for unfiltered MS1 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
 
 ## ticQuartileToQuartileLogRatio
 ## ticQuartileToQuartileLogRatio Q2/Q1%
@@ -1778,7 +1785,7 @@ annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"))
 ```
 
 
-```{r ticQuartileToQuartileLogRatio-MS2-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS2 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS2 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS2 spectra.  (f) log ratio of quartile 4 to quartile 3 for unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
+```{r ticQuartileToQuartileLogRatio-MS2-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS2 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS2 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS2 spectra. (f) log ratio of quartile 4 to quartile 3 for unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
 
 ## ticQuartileToQuartileLogRatio
 ## ticQuartileToQuartileLogRatio Q2/Q1%
@@ -1962,7 +1969,7 @@ cor_chromatographyDuration_msLevel2_s <- cor.test(
 ```
 
 ```{r numberSpectra-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1-Count` and `MS2-Count`. The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Number of filtered MS1 spectra (`QuaMeter` metric: `MS1-Count`). (b) Number of unfiltered MS1 spectra (`QuaMeter` metric: `MS1-Count`). (c) Number of filtered MS2 spectra (`QuaMeter` metric: `MS2-Count`). (b) Number of unfiltered MS2 spectra (`QuaMeter` metric: `MS2-Count`).", echo = FALSE, warning = FALSE, message=FALSE, cache = FALSE}
-##  numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
+## numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
 gg_numberSpectra_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS1.Count)) +
@@ -1977,7 +1984,7 @@ gg_numberSpectra_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
+## numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
 gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS1.Count)) +
@@ -1992,7 +1999,7 @@ gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
+## numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
 gg_numberSpectra_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS2.Count)) +
@@ -2007,7 +2014,7 @@ gg_numberSpectra_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
+## numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
 gg_numberSpectra_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     ggplot(aes(x = numberSpectra, y = MS2.Count)) +
@@ -2067,10 +2074,10 @@ cor_numberSpectra_msLevel2_s <- cor.test(
     metrics_sps_msLevel2[["MS2.Count"]], method = "spearman")
 ```
 
-```{r ticQuartersRtFraction-MS1-comparison-amidan2014,  fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
+```{r ticQuartersRtFraction-MS1-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
 
 ## 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
@@ -2081,7 +2088,7 @@ gg_rt_tic_q1_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
 gg_rt_tic_q2_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
@@ -2092,7 +2099,7 @@ gg_rt_tic_q2_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
 gg_rt_tic_q3_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
@@ -2105,7 +2112,7 @@ gg_rt_tic_q3_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
         theme(legend.position = "none")
 
 ## 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
@@ -2116,7 +2123,7 @@ gg_rt_tic_q1_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
 gg_rt_tic_q2_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
@@ -2127,7 +2134,7 @@ gg_rt_tic_q2_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
 gg_rt_tic_q3_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
@@ -2206,10 +2213,10 @@ cor_rt_tic_q3_msLevel1_s <- cor.test(
     metrics_sps_msLevel1[["ticQuartersRtFraction.75%"]], tmp, method = "spearman")
 ```
 
-```{r ticQuartersRtFraction-MS2-comparison-amidan2014,  fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
+```{r ticQuartersRtFraction-MS2-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
 
 ## 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
@@ -2220,7 +2227,7 @@ gg_rt_tic_q1_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
 gg_rt_tic_q2_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
@@ -2232,7 +2239,7 @@ gg_rt_tic_q2_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
 gg_rt_tic_q3_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
@@ -2245,7 +2252,7 @@ gg_rt_tic_q3_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
         theme(legend.position = "none")
 
 ## 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
 gg_rt_tic_q1_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
@@ -2256,7 +2263,7 @@ gg_rt_tic_q1_msLevel2 <- metrics_sps_msLevel2 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
 gg_rt_tic_q2_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
@@ -2268,7 +2275,7 @@ gg_rt_tic_q2_msLevel2 <- metrics_sps_msLevel2 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+## ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
 gg_rt_tic_q3_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
@@ -2353,7 +2360,7 @@ gg_rt_tic_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
-    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+    select(rowname, `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
         `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
     rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
         "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
@@ -2373,7 +2380,7 @@ gg_rt_tic_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC_Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
     mutate(RT.TIC_Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
-    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+    select(rowname, `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
         `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
     rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
         "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
@@ -2394,7 +2401,7 @@ gg_rt_tic_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
     mutate(RT.TIC.Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
-    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+    select(rowname, `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
         `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
     rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
         "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
@@ -2414,7 +2421,7 @@ gg_rt_tic_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
     mutate(RT.TIC_Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
     mutate(RT.TIC_Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
-    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+    select(rowname, `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
         `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
     rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
         "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
@@ -3084,12 +3091,9 @@ caption <- "Quantiles for Pearson and Spearman correlation coefficients for \\te
 df |>
    knitr::kable(caption = caption, format = "latex", label = "quantiles", booktabs = TRUE, escape = T) |>
     kableExtra::column_spec(2:5, width = "3cm") |>
-   kableExtra::kable_styling()
+   kableExtra::kable_styling(font_size = 9)
 
 ```
-
-
-~\
 
 ## Performance under parallelization
 
