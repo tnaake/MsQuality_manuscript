@@ -20,8 +20,7 @@ output:
     toc_depth: 3
     number_sections: true
 header-includes: 
-  \usepackage{float} \floatplacement{figure}{H} 
-  \newcommand{\beginsupplement}{\setcounter{table}{0}  \renewcommand{\thetable}{S\arabic{table}} \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
+    \usepackage{caption} \usepackage{float} \floatplacement{figure}{H} \newcommand{\beginsupplement}{\setcounter{table}{0} \renewcommand{\thetable}{S\arabic{table}} \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
 ---
 
 \beginsupplement
@@ -60,7 +59,7 @@ data sets will be analyzed:
 measurements.
 
 - In Section \ref{sec:Amidan2014}: the @Amidan2014 data set consists 
-of 3431 LC-MS measurements of a single QC sample 
+of 3431 LC-MS proteomics measurements of a single QC sample 
 (whole cell lysate of *Shewanella oneidensis*). The QC sample was measured on 
 Exactive, LTQ IonTrap, LTQ Orbitrap, and Velos Orbitrap instruments.
 
@@ -134,6 +133,707 @@ library("MsQuality")
 
 \newpage
 
+# List of available metrics
+
+The following list gives a brief explanation on the available metrics. Further 
+information may be found at the 
+[HUPO-PSI mzQC project page](https://github.com/HUPO-PSI/mzQC)  or in the 
+respective help file for the quality metric (accessible by e.g. entering
+`?chromatographyDuration` to the R console). 
+We also give here explanation on how the metric is calculated in `MsQuality`. 
+Currently, all quality metrics can be calculated for both `Spectra` and
+`MsExperiment` objects. 
+
+- *chromatographyDuration*, **chromatography duration** (MS:4000053), 
+  "The retention time duration of the chromatography in seconds." [PSI:MS]; 
+  Longer duration may indicate a better chromatographic separation of compounds 
+  which depends, however, also on the sampling/scan rate of the MS instrument. 
+  
+  The metric is calculated as follows:  
+    (1) the retention time associated to the `Spectra` object is obtained,
+    (2) the maximum and the minimum of the retention time is obtained, 
+    (3) the difference between the maximum and the minimum is calculated and returned. 
+- *ticQuartersRtFraction*, **TIC quarters RT fraction** (MS:4000054), 
+  "The interval when the respective quarter of the TIC accumulates divided by 
+  retention time duration." [PSI:MS];
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation. The metric provides information on the sample 
+  (compound) flow along the chromatographic run, potentially revealing poor 
+  chromatographic performance, such as the absence of a signal for a 
+  significant portion of the run.
+  
+  The metric is calculated as follows: 
+    (1) the `Spectra` object is ordered according to the retention time,  
+    (2) the cumulative sum of the ion count is calculated (TIC), 
+    (3) the quantiles are calculated according to the `probs` argument, 
+        e.g. when `probs` is set to `c(0, 0.25, 0.5, 0.75, 1)` the 
+        0\%, 25\%, 50\%, 75\%, and 100\% quantile is calculated, 
+    (4) the retention time/relative retention time (retention time divided by 
+        the total run time taking into account the minimum retention time) is 
+        calculated, 
+    (5) the (relative) duration of the LC run after which the cumulative
+        TIC exceeds (for the first time) the respective quantile of the 
+        cumulative TIC is calculated and returned.
+- *rtOverMsQuarters*, **MS1 quarter RT fraction** (MS:4000055), 
+  "The interval used for acquisition of the first, second, third, and fourth 
+  quarter of all MS1 events divided by retention time duration." [PSI:MS], 
+  `msLevel = 1L`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation. For MS1 scans, the values are expected to be in 
+  a similar range across samples of the same type.
+  
+  The metric is calculated as follows:  
+    (1) the retention time duration of the whole `Spectra` object is determined 
+        (taking into account all the MS levels), 
+    (2) the `Spectra` object is filtered according to the MS level and 
+        subsequently ordered according to the retention time  
+    (3) the MS events are split into four (approximately) equal parts, 
+    (4) the relative retention time is calculated (using the retention time 
+        duration from (1) and taking into account the minimum retention time), 
+    (5) the relative retention time values associated to the MS event parts
+        are returned.
+- *rtOverMsQuarters*, **MS2 quarter RT fraction** (MS:4000056), 
+  "The interval used for acquisition of the first, second, third, and fourth 
+  quarter of all MS2 events divided by retention time duration." [PSI:MS],
+  `msLevel = 2L`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation. For MS2 scans, the comparability of the values 
+  depends on the acquisition mode and settings to select ions for fragmentation.
+  
+  The metric is calculated as follows:  
+    (1) the retention time duration of the whole `Spectra` object is determined 
+        (taking into account all the MS levels), 
+    (2) the `Spectra` object is filtered according to the MS level and 
+        subsequently ordered according to the retention time  
+    (3) the MS events are split into four (approximately) equal parts, 
+    (4) the relative retention time is calculated (using the retention time 
+        duration from (1) and taking into account the minimum retention time), 
+    (5) the relative retention time values associated to the MS event parts
+        are returned.
+- *ticQuartileToQuartileLogRatio*, **MS1 TIC-change quartile ratios** 
+  (MS:4000057), ""The log ratios of successive TIC-change quartiles. The TIC 
+  changes are the list of MS1 total ion current (TIC) value changes from 
+  one to the next scan, produced when each MS1 TIC is subtracted from the 
+  preceding MS1 TIC. The metric's value triplet represents the log ratio of the 
+  TIC-change Q2 to Q1, Q3 to Q2, TIC-change-max to Q3" [PSI:MS], 
+  `mode = "TIC_change"`,  `relativeTo = "previous"`, `msLevel = 1L`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation.This metric evaluates the stability (similarity) 
+  of MS1 TIC values from scan to scan along the LC run. High log ratios 
+  representing very large intensity differences between pairs of scans might 
+  be due to electrospray instability or presence of a chemical contaminant.
+  
+  The metric is calculated as follows:  
+    (1) the TIC (`ionCount`) of the  `Spectra` object is calculated 
+        per scan event (with spectra ordered by retention time), 
+    (2) the differences between TIC values are calculated between subsequent 
+        scan events,
+    (3) the ratios between the 25\%, 50\%, 75\%, and 100\% quantile to the 
+        25\% quantile of the values of (2) are calculated,
+    (4) the `log` values of the ratios are returned.
+- *ticQuartileToQuartileLogRatio*, **MS1 TIC quartile ratios** (MS:4000058),
+  "The log ratios of successive TIC quartiles. The metric's value triplet 
+  represents the log ratios of TIC-Q2 to TIC-Q1, TIC-Q3 to TIC-Q2, 
+  TIC-max to TIC-Q3." [PSI:MS], `mode = "TIC"`, 
+  `relativeTo = "previous"`, `msLevel = 1L`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation. The ratios provide information on the distribution
+  of the TIC values for one LC-MS run. Within an experiment, with the same 
+  LC setup, values should be comparable between samples.
+  
+  The metric is calculated as follows:  
+    (1) the TIC (`ionCount`) of the `Spectra` object is calculated 
+        per scan event (with spectra ordered by retention time),
+    (2) the TIC values between subsequent scan events are taken
+        as they are,
+    (3) the ratios between the 25\%, 50\%, 75\%, and 100\% quantile to the 
+        25\% quantile of the values of (2) are calculated.
+    (4) The `log` values of the ratios are returned.
+- *numberSpectra*, **number of MS1 spectra** MS:4000059), 
+  "The number of MS1 events in the run." [PSI:MS], `msLevel = 1L`;
+  An unusual low number may indicate incomplete sampling/scan rate of the MS 
+  instrument, low sample volume and/or failed injection of a sample.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the number of the spectra are obtained (`length` of `Spectra`) and 
+        returned.
+- *numberSpectra*, **number of MS2 spectra** (MS:4000060), 
+  "The number of MS2 events in the run." [PSI:MS], `msLevel = 2L`;
+  An unusual low number may indicate incomplete sampling/scan rate of the MS 
+  instrument, low sample volume and/or failed injection of a sample.
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the number of the spectra are obtained (`length` of `Spectra`) and 
+        returned.
+- *mzAcquisitionRange*, **m/z acquisition range** (MS:4000069),
+  "Upper and lower limit of m/z precursor values at which MSn spectra are 
+  recorded." [PSI:MS];
+  The metric informs about the dynamic range of the acquisition. Based on the 
+  used MS instrument configuration, the values should be similar. Variations 
+  between measurements may arise when employing acquisition in DDA mode.
+  
+  The metric is calculated as follows: 
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the m/z values of the peaks within the `Spectra` object are obtained, 
+    (3) the minimum and maximum m/z values are obtained and returned. 
+- *rtAcquisitionRange*, **retention time acquisition range** (MS:4000070),
+  "Upper and lower limit of retention time at which spectra are recorded." 
+  [PSI:MS];
+  An unusual low range may indicate incomplete sampling and/or a premature or 
+  failed LC run.
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the retention time values of the features within the `Spectra` 
+        object are obtained, 
+    (3) the minimum and maximum retention time values are obtained and 
+        returned.
+- *msSignal10xChange*, **MS1 signal jump (10x) count** (MS:4000097),
+  "The number of times where MS1 TIC increased more than 10-fold between adjacent 
+  MS1 scans. An unusual high count of signal jumps or falls can indicate 
+  ESI stability issues." [PSI:MS], `change = "jump"`, `msLevel = 1L`;
+  An unusual high count of signal jumps or falls may indicate ESI stability 
+  issues.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the intensity values of the features are obtained via the ion count,  
+    (4) the signal jumps/declines of the intensity values with the two 
+        subsequent intensity values is calculated,
+    (5) the signal jumps by a factor of ten or more are counted and returned.
+- *msSignal10xChange*, **MS1 signal fall (10x) count** (MS:4000098),
+  "The number of times where MS1 TIC decreased more than 10-fold between adjacent 
+  MS1 scans. An unusual high count of signal jumps or falls can indicate 
+  ESI stability issues." [PSI:MS], `change = "fall"`, `msLevel = 1L`;
+  An unusual high count of signal jumps or falls may indicate ESI stability 
+  issues.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained,
+    (3) the intensity values of the features are obtained via the ion count, 
+    (4) the signal jumps/declines of the intensity values with the two 
+        subsequent intensity values is calculated, 
+    (5) the signal declines by a factor of ten or more are counted and returned.
+- *numberEmptyScans*, **number of empty MS1 scans** (MS:4000099),
+  "Number of MS1 scans where the scans' peaks intensity sums to 0 (i.e. no 
+  peaks or only 0-intensity peaks)." [PSI:MS], `msLevel = 1L`;
+  An unusual high number may indicate incomplete sampling/scan rate of the MS 
+  instrument, low sample volume and/or failed injection of a sample.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensities per entry are obtained, 
+    (3) the number of intensity entries that are `NULL`, `NA`, or 
+        that have a sum of `0` are obtained and returned. 
+- *numberEmptyScans*, **number of empty MS2 scans** (MS:4000100),
+  "Number of MS2 scans where the scans' peaks intensity sums to 0 (i.e. no 
+  peaks or only 0-intensity peaks)." [PSI:MS], `msLevel = 2L`;
+  An unusual high number may indicate incomplete sampling/scan rate of the MS 
+  instrument, low sample volume and/or failed injection of a sample.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensities per entry are obtained, 
+    (3) the number of intensity entries that are `NULL`, `NA`, or 
+        that have a sum of `0` are obtained and returned. 
+- *numberEmptyScans*, **number of empty MS3 scans** (MS:4000101),
+  "Number of MS3 scans where the scans' peaks intensity sums to 0 (i.e. no 
+  peaks or only 0-intensity peaks)." [PSI:MS], `msLevel = 3L`;
+  An unusual high number may indicate incomplete sampling/scan rate of the MS 
+  instrument, low sample volume and/or failed injection of a sample.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensities per entry are obtained, 
+    (3) the number of intensity entries that are `NULL`, `NA`, or 
+        that have a sum of `0` are obtained and returned. 
+- *precursorIntensityQuartiles*, 
+  **MS2 precursor intensity distribution Q1, Q2, Q3** (MS:4000116), 
+  "From the distribution of MS2 precursor intensities, the quartiles 
+  Q1, Q2, Q3." [PSI:MS], `identificationLevel = "all"`;
+  The intensity distribution of the precursors informs about the dynamic range 
+  of the acquisition.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,
+    (2) the intensity of the precursor ions within the `Spectra` object are obtained, 
+    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+        obtained (`NA` values are removed) and returned.
+- *precursorIntensityMean*, **MS2 precursor intensity distribution mean** 
+  (MS:4000117), "From the distribution of MS2 precursor intensities, the mean." 
+  [PSI:MS], `identificationLevel = "all"`;
+  The intensity distribution of the precursors informs about the dynamic range
+  of the acquisition.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the mean of the precursor intensity values is obtained 
+        (`NA` values are removed) and returned.
+- *precursorIntensitySd*, **MS2 precursor intensity distribution sigma**
+  (MS:4000118), "From the distribution of MS2 precursor intensities, the sigma 
+  value." [PSI:MS], `identificationLevel = "all"`;
+  The intensity distribution of the precursors informs about the dynamic range of 
+  the acquisition.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained,
+    (3) the standard deviation of precursor intensity values is obtained 
+        (`NA` values are removed) and returned. 
+- *medianPrecursorMz*, 
+  **MS2 precursor median m/z of identified quantification data points** 
+  (MS:4000152), 
+  "Median m/z value for MS2 precursors of all quantification data points after 
+  user-defined acceptance criteria are applied. These data points may be for 
+  example XIC profiles, isotopic pattern areas, or reporter ions 
+  (see MS:1001805). The used type should be noted in the metadata or 
+  analysis methods section of the recording file for the respective run. In 
+  case of multiple acceptance criteria (FDR) available in proteomics, PSM-level 
+  FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`, `msLevel = 1L`;
+  The m/z distribution informs about the dynamic range of the acquisition.
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor m/z values are obtained, 
+    (3) the median value is returned (`NA`s are removed).
+- *rtIqr*, 
+  **interquartile RT period for identified quantification data points** 
+  (MS:4000153), "The interquartile retention time period, in seconds, for all 
+  quantification data points after user-defined acceptance criteria are applied 
+  over the complete run. These data points may be for example XIC profiles, 
+  isotopic pattern areas, or reporter ions (see MS:1001805). The used type 
+  should be noted in the metadata or analysis methods section of the recording 
+  file for the respective run. In case of multiple acceptance criteria (FDR) 
+  available in proteomics, PSM-level FDR should be used for better 
+  comparability."
+  [PSI:MS], `identificationLevel = "identified"`;
+  Longer duration may indicate a better chromatographic separation of compounds 
+  which depends, however, also on the sampling/scan rate of the MS instrument.
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the retention time values are obtained, 
+    (3) the interquartile range is obtained from the values and returned
+        (`NA` values are removed).
+- *rtIqrRate*, 
+  **rate of the interquartile RT period for identified quantification data points**
+  (MS:4000154), "The rate of identified quantification data points for the 
+  interquartile retention time period, in identified quantification data points 
+  per second. These data points may be for example XIC profiles, isotopic 
+  pattern areas, or reporter ions (see MS:1001805). The used type should 
+  be noted in the metadata or analysis methods section of the recording 
+  file for the respective run. In case of multiple acceptance criteria (FDR) 
+  available in proteomics, PSM-level FDR should be used for better 
+  comparability." [PSI:MS],
+  `identificationLevel = "identified"`;
+  Higher rates may indicate a more efficient sampling and identification. 
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the retention time values are obtained, 
+    (3) the 25\% and 75\% quantiles are obtained from the retention time values
+        (`NA` values are removed), 
+    (4) the number of eluted features between this 25\% and 75\% quantile is 
+        calculated,
+    (5) the number of features is divided by the interquartile range of the 
+        retention time and returned.
+- *areaUnderTic*, **area under TIC** (MS:4000155),
+  "The area under the total ion chromatogram." [PSI:MS];
+  The metric informs about the dynamic range of the acquisition. Differences 
+  between samples of an experiment may indicate differences in the dynamic 
+  range and/or in the sample content.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the sum of the ion counts are obtained and returned. 
+- *areaUnderTicRtQuantiles*, **area under TIC RT quantiles** (MS:4000156),
+  "The area under the total ion chromatogram of the retention time quantiles. 
+  Number of quantiles are given by the n-tuple." [PSI:MS];
+  The metric informs about the dynamic range of the acquisition. Differences 
+  between samples of an experiment may indicate differences in the dynamic 
+  range and/or in the sample content.
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation. Differences between samples of an experiment may 
+  indicate differences in chromatographic performance, differences in the 
+  dynamic range and/or in the sample content.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the `Spectra` object is ordered according to the retention time, 
+    (3) the 0\%, 25\%, 50\%, 75\%, and 100\% quantiles of the retention time 
+        values are obtained, 
+    (4) the ion count of the intervals between the 0\%/25\%, 25\%/50\%, 
+        50\%/75\%, and 75\%/100\% are obtained, \
+    (5) the ion counts of the intervals are summed (TIC) and the values returned.
+- *extentIdentifiedPrecursorIntensity*, 
+  **extent of identified MS2 precursor intensity** (MS:4000157),
+  "Ratio of 95th over 5th percentile of MS2 precursor intensity for all 
+  quantification data points after user-defined acceptance criteria are 
+  applied. The used type of identification should be noted in the metadata or 
+  analysis methods section of the recording file for the respective run. 
+  In case of multiple acceptance criteria (FDR) available in proteomics, 
+  PSM-level FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensities of the precursor ions are obtained, 
+    (3) the 5\% and 95\% quantile of these intensities are obtained 
+        (1NA1 values are removed), 
+    (4) the ratio between the 95\% and the 5\% intensity quantile is calculated
+        and returned. 
+- *medianTicRtIqr*, **median of TIC values in the RT range in which the middle 
+  half of quantification data points are identified** (MS:4000158),
+  "Median of TIC values in the RT range in which half of quantification data 
+  points are identified (RT values of Q1 to Q3 of identifications). These 
+  data points may be for example XIC profiles, isotopic pattern areas, or 
+  reporter ions (see MS:1001805). The used type should be noted in the metadata 
+  or analysis methods section of the recording file for the respective run. 
+  In case of multiple acceptance criteria (FDR) available in proteomics, 
+  PSM-level FDR should be used for better comparability." [PSI:MS],
+  `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the `Spectra` object is ordered according to the retention time, 
+    (3) the features between the 1st and 3rd quartile are obtained 
+        (half of the features that are present in the `Spectra` object), 
+    (4) the ion count of the features within the 1st and 3rd quartile is 
+        obtained, 
+    (5) the median value of the ion count is calculated (`NA` values are 
+        removed) and the median value is returned.
+- *medianTicOfRtRange*, **median of TIC values in the shortest RT range in 
+  which half of the quantification data points are identified** (MS:4000159),
+  "Median of TIC values in the shortest RT range in which half of the 
+  quantification data points are identified. These data points may be for 
+  example XIC profiles, isotopic pattern areas, or reporter ions 
+  (see MS:1001805). The used type should be noted in the metadata or analysis 
+  methods section of the recording file for the respective run. In case of 
+  multiple acceptance criteria (FDR) available in proteomics, PSM-level FDR 
+  should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition along the 
+  chromatographic separation.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the `Spectra` object is ordered according to the retention time,  
+    (3) the number of features in the `Spectra` object is obtained and 
+        the number for half of the features is calculated,
+    (4) iterate through the features (always by taking the neighbouring
+        half of features) and calculate the retention time range of the
+        set of features, 
+    (5) retrieve the set of features with the minimum retention time 
+        range, 
+    (6) calculate from the set of (5) the median TIC (`NA` values are removed)
+        and return it.
+- *precursorIntensityRange*, **MS2 precursor intensity range** (MS:4000160),
+  "Minimum and maximum MS2 precursor intensity recorded. " [PSI:MS];
+  The metric informs about the dynamic range of the acquisition.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the minimum and maximum precursor intensity values are obtained and 
+        returned.
+- *precursorIntensityQuartiles*, 
+  **identified MS2 precursor intensity distribution Q1, Q2, Q3** (MS:4000161), 
+  "From the distribution of identified MS2 precursor intensities, the quartiles 
+  Q1, Q2, Q3. The used type of identification should be noted in the metadata 
+  or analysis methods section of the recording file for the respective run. 
+  In case of multiple acceptance criteria (FDR) available in proteomics, 
+  PSM-level FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition in relation to 
+  identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,
+    (2) the intensity of the precursor ions within the `Spectra` object are obtained, 
+    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+        obtained (`NA` values are removed) and returned.
+- *precursorIntensityQuartiles*, 
+  **unidentified MS2 precursor intensity distribution Q1, Q2, Q3** (MS:4000162), 
+  "From the distribution of unidentified MS2 precursor intensities, the 
+  quartiles Q1, Q2, Q3. The used type of identification should be noted in the 
+  metadata or analysis methods section of the recording file for the respective 
+  run. In case of multiple acceptance criteria (FDR) available in proteomics, 
+  PSM-level FDR should be used for better comparability." 
+  [PSI:MS], `identificationLevel = "unidentified"`;
+  The metric informs about the dynamic range of the acquisition in relation to 
+  identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the 25\%, 50\%, and 75\% quantile of the  precursor intensity values are 
+        obtained (`NA` values are removed) and returned.
+- *precursorIntensityMean*, 
+  **identified MS2 precursor intensity distribution mean** (MS:4000163), 
+  "From the distribution of identified MS2 precursor intensities, the mean. 
+  The intensity distribution of the identified precursors informs about the 
+  dynamic range of the acquisition in relation to identifiability. The used 
+  type of identification should be noted in the metadata or analysis methods 
+  section of the recording file for the respective run. In case of multiple 
+  acceptance criteria (FDR) available in proteomics, PSM-level FDR should be 
+  used for better comparability." 
+  [PSI:MS], `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition in relation to 
+  identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the mean of the precursor intensity values is obtained 
+        (`NA` values are removed) and returned.
+- *precursorIntensityMean*, 
+  **unidentified MS2 precursor intensity distribution mean** (MS:4000164), 
+  "From the distribution of unidentified MS2 precursor intensities, the mean. 
+  The used type of identification should be noted in the metadata or analysis 
+  methods section of the recording file for the respective run. In case of 
+  multiple acceptance criteria (FDR) available in proteomics, PSM-level FDR 
+  should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "unidentified"`;
+  The metric informs about the dynamic range of the acquisition in relation 
+  to identifiability.
+  
+  The metric is calculated as follows:  
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained, 
+    (3) the mean of the precursor intensity values is obtained 
+        (`NA` values are removed) and returned.
+- *precursorIntensitySd*, 
+  **identified MS2 precursor intensity distribution sigma** (MS:4000165), 
+  "From the distribution of identified MS2 precursor intensities, the sigma 
+  value. The used type of identification should be noted in the metadata or 
+  analysis methods section of the recording file for the respective run. In 
+  case of multiple acceptance criteria (FDR) available in proteomics, PSM-level 
+  FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  The metric informs about the dynamic range of the acquisition in relation to 
+  identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained,
+    (3) the standard deviation of precursor intensity values is obtained 
+        (`NA` values are removed) and returned. 
+- *precursorIntensitySD*, 
+  **unidentified MS2 precursor intensity distribution sigma** (MS:4000166), 
+  "From the distribution of unidentified MS2 precursor intensities, the sigma 
+  value. The used type of identification should be noted in the metadata or 
+  analysis methods section of the recording file for the respective run. In 
+  case of multiple acceptance criteria (FDR) available in proteomics, PSM-level 
+  FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "unidentified"`;
+  The metric informs about the dynamic range of the acquisition in relation to 
+  identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the intensity of the precursor ions within the `Spectra` object are 
+        obtained,
+    (3) the standard deviation of precursor intensity values is obtained 
+        (`NA` values are removed) and returned. 
+- *ratioCharge1over2*, 
+  **ratio of 1+ over 2+ of all MS2 known precursor charges** (MS:4000167),
+  "The ratio of 1+ over 2+ MS2 precursor charge count of all spectra." [PSI:MS], 
+  `identificationLevel = "all"`;
+  High ratios of 1+/2+ MS2 precursor charge count may indicate inefficient 
+  ionization.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 1+ is divided by the number of 
+      precursors with charge 2+ and the ratio is returned.
+- *ratioCharge1over2*, 
+  **ratio of 1+ over 2+ of identified MS2 known precursor charges** (MS:4000168),
+  ""The ratio of 1+ over 2+ MS2 precursor charge count of identified spectra. 
+  The used type of identification should be noted in the metadata or analysis 
+  methods section of the recording file for the respective run. In case of 
+  multiple acceptance criteria (FDR) available in proteomics, PSM-level FDR 
+  should be used for better comparability." [PSI:MS],
+  `identificationLevel = "identified"`;
+  High ratios of 1+/2+ MS2 precursor charge count may indicate inefficient 
+  ionization in relation to identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 1+ is divided by the number of 
+      precursors with charge 2+ and the ratio is returned.
+- *ratioCharge3over2*, 
+  **ratio of 3+ over 2+ of all MS2 known precursor charges** (MS:4000169),
+  "The ratio of 3+ over 2+ MS2 precursor charge count of all spectra." [PSI:MS], 
+  `identificationLevel = "all"`;
+  Higher ratios of 3+/2+ MS2 precursor charge count may indicate e.g. 
+  preference for longer peptides.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 3+ is divided by the number of 
+        precursors with charge 2+ and the ratio is returned.
+- *ratioCharge3over2*, 
+  **ratio of 3+ over 2+ of identified MS2 known precursor charges** (MS:4000170),
+  "The ratio of 3+ over 2+ MS2 precursor charge count of identified spectra. 
+  The used type of identification should be noted in the metadata or analysis 
+  methods section of the recording file for the respective run. In case of 
+  multiple acceptance criteria (FDR) available in proteomics, PSM-level 
+  FDR should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  Higher ratios of 3+/2+ MS2 precursor charge count may indicate e.g. 
+  preference for longer peptides in relation to identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level,  
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 3+ is divided by the number of 
+        precursors with charge 2+ and the ratio is returned.
+- *ratioCharge4over2*,
+  **ratio of 4+ over 2+ of all MS2 known precursor charges** (MS:4000171),
+  "The ratio of 4+ over 2+ MS2 precursor charge count of all spectra." 
+  [PSI:MS], `identificationLevel = "all"`;
+  Higher ratios of 3+/2+ MS2 precursor charge count may indicate e.g. 
+  preference for longer peptides.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 4+ is divided by the number of 
+        precursors with charge 2+ and the ratio is returned.
+- *ratioCharge4over2*, 
+  **ratio of 4+ over 2+ of identified MS2 known precursor charges** (MS:4000172),
+  "The ratio of 4+ over 2+ MS2 precursor charge count of identified spectra. 
+  The used type of identification should be noted in the metadata or analysis 
+  methods section of the recording file for the respective run. In case of 
+  multiple acceptance criteria (FDR) available in proteomics, PSM-level FDR 
+  should be used for better comparability." [PSI:MS], 
+  `identificationLevel = "identified"`;
+  Higher ratios of 3+/2+ MS2 precursor charge count may indicate e.g. 
+  preference for longer peptides in relation to identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the number of precursors with charge 4+ is divided by the number of 
+        precursors with charge 2+ and the ratio is returned.
+- *meanCharge*, **mean MS2 precursor charge in all spectra** (MS:4000173),
+  "Mean MS2 precursor charge in all spectra" [PSI:MS], 
+  `identificationLevel = "all"`;
+  Higher charges may indicate inefficient ionization or e.g. preference for 
+  longer peptides.
+  
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained,
+    (3) the mean of the precursor charge values is calculated and returned.
+- *meanCharge*, **mean MS2 precursor charge in identified spectra** (MS:4000174),
+  "Mean MS2 precursor charge in identified spectra. The used type of 
+  identification should be noted in the metadata or analysis methods section 
+  of the recording file for the respective run. In case of multiple acceptance 
+  criteria (FDR) available in proteomics, PSM-level FDR should be used for 
+  better comparability." [PSI:MS], `identificationLevel = "identified"`;
+  Higher charges may indicate inefficient ionization or e.g. preference for 
+  longer peptides in relation to identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained,
+    (3) the mean of the precursor charge values is calculated and returned.
+- *medianCharge*, **median MS2 precursor charge in all spectra** (MS:4000175),
+  "Median MS2 precursor charge in all spectra" [PSI:MS], 
+  `identificationLevel = "all"`;
+  Higher charges may indicate inefficient ionization and/or e.g. preference 
+  for longer peptides.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the median of the precursor charge values is calculated and returned.
+- *medianCharge*, **median MS2 precursor charge in identified spectra** 
+  (MS:4000176), "Median MS2 precursor charge in identified spectra. The used 
+  type of identification should be noted in the metadata or analysis methods 
+  section of the recording file for the respective run. In case of multiple 
+  acceptance criteria (FDR) available in proteomics, PSM-level FDR should be 
+  used for better comparability." [PSI:MS],
+  `identificationLevel = "identified"`; 
+  Higher charges may indicate inefficient ionization and/or e.g. preference for 
+  longer peptides in relation to identifiability.
+  
+  The metric is calculated as follows:
+    (1) the `Spectra` object is filtered according to the MS level, 
+    (2) the precursor charge is obtained, 
+    (3) the median of the precursor charge values is calculated and returned.
+
+
+
+An up-to-date list can be found in the vignette of the package via 
+Bioconductor. 
+
+# Quick start to the package 
+
+For demonstration purposes, we apply here the `MsQuality` package on the 
+.mzML files shipped by the `msdata` package. One of the files is a
+LC-MS/MS DIA (SWATH) and one a LC-MS/MS DDA file.
+
+```{r define_files_toy_data}
+fls <- dir(system.file("TripleTOF-SWATH", package = "msdata"), full.names = TRUE)
+```
+
+In a next step, we create a `Spectra` object from the two .mzML files using 
+the `Spectra` function.
+
+```{r create_spectra_toy_data}
+sps <- Spectra(fls, backend = MsBackendMzR())
+```
+
+The `Spectra` object is given to the `calculateMetricsFromSpectra` function.
+We are interested in the metrics (`"chromatographyDuration"`), 
+(`"numberSpectra"`), and (`"areaUnderTic"`). The metrics are defined by the
+`metrics` vector.  
+We further specify that the metrics should be calculated on MS1 spectra 
+(`msLevel = 1`).
+
+```{r calculate_metrics_toy data, cache = FALSE}
+metrics <- c("chromatographyDuration", "numberSpectra", "areaUnderTic")
+
+## calculate the metrics
+metrics_sps <- calculateMetricsFromSpectra(spectra = sps, metrics = metrics,
+    msLevel = 1)
+```
+
+The output of the function is per default a `data.frame` object that has
+the metrics as columns and the samples as rows.
+
+```{r}
+## for visualization purposes the rownames are truncated to the base names
+rownames(metrics_sps) <- basename(rownames(metrics_sps))
+metrics_sps
+```
+
+\newpage
+
 # @Cherkaoui2022: A functional analysis of 180 cancer cell lines reveals conserved intrinsic metabolic programs \label{sec:Cherkaoui2022}
 
 The .mzML files were downloaded from the MassIVE database (accession number 
@@ -141,7 +841,7 @@ MSV000087155, available at https://massive.ucsd.edu/) via
 ftp://massive.ucsd.edu/MSV000087155. 
 
 We use the [BiocFileCache]() package from Bioconductor to download and cache the
-mzML files locally. To this end we first determine below the full file names of
+.mzML files locally. To this end we first determine below the full file names of
 all .mzML files of this data set.
 
 All parts in the section 
@@ -151,7 +851,7 @@ are reproducible except the parallelization steps in the subsection
 are loaded to the environment.
 
 
-```{r set_directory_for}
+```{r set_directory_for, cache = FALSE}
 url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/"
 library(curl)
 file_list <- readLines(curl(url, "r"))
@@ -164,7 +864,7 @@ With the file names available we next create a *BiocFileCache* instance adding
 the files. The *BiocFileCache* will take care of downloading files that are not
 already available in the local cache thus preventing unneeded downloads.
 
-```{r biocFileCache_cherkaoui2022, message = FALSE}
+```{r biocFileCache_cherkaoui2022, message = FALSE, cache = FALSE}
 library(BiocFileCache)
 ## every additional result should be saved in there
 cherkaoui <- BiocFileCache("../Cherkaoui2022", ask = FALSE)
@@ -178,7 +878,7 @@ to remove these incompatible lines from each .mzML file. This needs to be done
 (once) using the below unix shell commands that should be executed in the folder
 containing the downloaded files.
 
-```{bash}
+```{bash, eval = FALSE}
 cd ../Cherkaoui2022
 sed -i 's/<run defaultInstrumentConfigurationRef=.*/<run/g' *.mzML
 sed -i '/^<scanWindowList/,/^<\/scanWindowList/d' *.mzML
@@ -237,7 +937,7 @@ We first download and cache the *PrimaryAnalysis.zip* archive that contains all
 results, unzip it to a temporary folder and import the
 *metabolomics_180CCL.xlsx* file.
 
-```{r}
+```{r cache = FALSE}
 l <- paste0("https://www.research-collection.ethz.ch/bitstream/handle/",
             "20.500.11850/511784/PrimaryAnalysis.zip?sequence=1&isAllowed=y")
 arch <- bfcrpath(cherkaoui, l)
@@ -256,7 +956,7 @@ We then create a Figure to compare the differences in quality metrics
 between the analyzed and excluded measurements (Figure
 \@ref(fig:metrics-cherkaoui2022)).
 
-```{r echo = FALSE}
+```{r echo = FALSE, cache = FALSE}
 ## reshape the metrics into long format
 metrics_sps <- metrics_sps |>
     as.data.frame() |>
@@ -282,7 +982,7 @@ metrics_sps <- metrics_sps |>
     mutate(analyzed = ifelse(dsCode %in% measurements[["dsCode"]], "analyzed", "excluded"))
 ```
 
-```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the measurement was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE}
+```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the measurement was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE, cache = FALSE}
 gg_areaUnderTic <- metrics_sps |>
     filter(name == "areaUnderTic") |>
     ggplot() +
@@ -375,7 +1075,7 @@ saveRDS(df_mb, "../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 df_mb <- readRDS("../Cherkaoui2022/Cherkaoui2022_df_mb.RDS")
 ```
 
-```{r microbenchmark-cherkaoui2022, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Cherkaoui2022 under parallelization (1, 2, 4, 8, and 16 workers)."}
+```{r microbenchmark-cherkaoui2022, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Cherkaoui2022 under parallelization (1, 2, 4, 8, and 16 workers).", cache = FALSE}
 ## convert from nano seconds to seconds
 df_mb[["time"]] <- df_mb[["time"]] / 10e9
 df_mb <- df_mb |>
@@ -440,11 +1140,11 @@ in the subsection **Performance under parallelization** are precomputed.
 ## Instantiation of the Spectra object
 
 In the subsequent analysis, a `Spectra` object is instantiated. The operations 
-were executed within a (high-performance) computing environment (31 cores, 
+were executed within a (high-performance) computing environment (3 cores, 
 128 GB RAM pool for all cores), where the .mzML files were stored in the 
 directory `Amidan2014`.
 
-```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE, cache=TRUE}
+```{r create_spectra_Amidan2014, echo = TRUE, eval = FALSE}
 ## read the file with protein intensities
 path <- "/scratch/naake/Amidan2014"
 fls <- dir(path, full.names = TRUE, recursive = TRUE, pattern = "mzML")
@@ -458,140 +1158,65 @@ sps <- Spectra(fls, backend = MsBackendMzR())
 saveRDS(sps, file = "../Amidan2014/Amidan2014_sps.RDS")
 ```
 
-
-
 ## Calculate the metrics via `MsQuality`
-
 
 `MsQuality` utilizes `Spectra` objects that store the spectral data. Here,
 retention time information was available from the .mzML files and a higher
-number of metrics could be calculated:
-
-- *rtDuration*, **RT duration** (QC:4000053), "The retention time duration of 
-  the MS run in seconds, similar to the highest scan time minus the lowest 
-  scan time." [PSI:QC];
-- *rtOverTicQuantiles*, **RT over TIC quantile** (QC:4000054), "The interval 
-  when the respective quantile of the TIC accumulates divided by retention time 
-  duration. The number of quantiles observed is given by the size of the tuple." 
-  [PSI:QC];
-- *rtOverMsQuarters*, **MS1 quantiles RT fraction** (QC:4000055), 
-  "The interval used for acquisition of the first, second, third, and fourth 
-  quarter of all MS1 events divided by RT-Duration." [PSI:QC];
-- *rtOverMsQuarters*, **MS2 quantiles RT fraction** (QC:4000055), 
-  "The interval used for acquisition of the first, second, third, and fourth 
-  quarter of all MS2 events divided by RT-Duration." [PSI:QC];
-- *ticQuartileToQuartileLogRatio*, **MS1 TIC-change quartile ratios** 
-  (MS:4000057), "The log ratios of successive TIC-change quartiles. The 
-  TIC changes are the list of MS1 total ion current (TIC) value changes 
-  from one to the next scan, produced when each MS1 TIC is subtracted 
-  from the preceding MS1 TIC. The metric's value triplet represents the 
-  log ratio of the TIC-change Q2 to Q1, Q3 to Q2, TIC-change-max to Q3" 
-  [PSI:MS], `mode = "TIC_change"`;
-- *ticQuartileToQuartileLogRatio*, **MS1 TIC quartile ratios** (MS:4000058),
-  The log ratios of successive TIC quartiles. The metric's value triplet 
-  represents the log ratios of TIC-Q2 to TIC-Q1, TIC-Q3 to TIC-Q2, TIC-max to 
-  TIC-Q3." [PSI:MS], `mode = "TIC";
-- *numberSpectra*, **Number of MS1 spectra** (QC:4000059), 
-  "The number of MS1 events in the run." [PSI:QC]; 
-- *numberSpectra*, **Number of MS2 spectra** (QC:4000060), 
-  "The number of MS2 events in the run." [PSI:QC];
-- *medianPrecursorMz*, **Precursor median m/z for IDs** (QC:4000065), 
-  "Median m/z value for all identified peptides (unique ions) after FDR." 
-  [PSI:QC];
-- *rtIqr*, **Interquartile RT period for peptide identifications** (QC:4000072), 
-  "The interquartile retention time period, in seconds, for all peptide 
-  identifications over the complete run." [PSI:QC];
-- *rtIqrRate*, **Peptide identification rate of the interquartile RT period** 
-  (QC:4000073), "The identification rate of peptides for the interquartile 
-  retention time period, in peptides per second." [PSI:QC];
-- *areaUnderTic*, **Area under TIC** (QC:4000077), "The area under the total ion
-  chromatogram." [PSI:QC];
-- *areaUnderTicRtQuantiles*, **Area under TIC RT quantiles** (QC:4000078), "The 
-  area under the total ion chromatogram of the retention time quantiles. Number 
-  of quantiles are given by the n-tuple." [PSI:QC];
-- *medianTicRtIqr*, **Median of TIC values in the RT range in which the middle half of peptides are identified** 
-  (QC:4000130), "Median of TIC values in the RT range in which half of peptides 
-  are identified (RT values of Q1 to Q3 of identifications)" [PSI:QC];
-- *medianTicOfRtRange*, **Median of TIC values in the shortest RT range in which half of the peptides are identified** 
-  (QC:4000132), "Median of TIC values in the shortest RT range in which half of 
-  the peptides are identified"  [PSI:QC] 
-- *mzAcquisitionRange*, **m/z acquisition range** (QC:4000138), "Upper and 
-  lower limit of m/z values at which spectra are recorded." [PSI:QC];
-- *rtAcquisitionRange*, **Retention time acquisition range** (QC:4000139), 
-  "Upper and lower limit of time at which spectra are recorded." [PSI:QC];
-- *precursorIntensityRange*, **Precursor intensity range** (QC:4000144), 
-  "Minimum and maximum precursor intensity recorded." [PSI:QC];
-- *precursorIntensityQuartiles*, **Precursor intensity distribution Q1, Q2, Q3**
-  (QC:4000167), "From the distribution of precursor intensities, the quartiles 
-Q1, Q2, Q3" [PSI:QC];
-- *precursorIntensityMean*, **Precursor intensity distribution mean** 
-  (QC:4000168), "From the distribution of precursor intensities, the mean." 
-  [PSI:QC];
-- *precursorIntensitySd*, **Precursor intensity distribution sigma** 
-  (QC:4000169), "From the distribution of precursor intensities, the sigma 
-  value." [PSI:QC];
-- *msSignal10xChange*, **MS1 signal jump (10x) count** (QC:4000172), "The 
-  count of MS1 signal jump (spectra sum) by a factor of ten or more (10x) 
-  between two subsequent scans" [PSI:QC];
-- *RatioCharge1over2*, **Charged peptides ratio 1+ over 2+** (QC:4000174), 
-  "Ratio of 1+ peptide count over 2+ peptide count in identified spectra" 
-  [PSI:QC];
-- *RatioCharge1over2*, **Charged spectra ratio 1+ over 2+** (QC:4000179), 
-  "Ratio of 1+ spectra count over 2+ spectra count in all MS2" [PSI:QC];
-- *RatioCharge3over2*, **Charged peptides ratio 3+ over 2+** (QC:4000175), 
-  "Ratio of 3+ peptide count over 2+ peptide count in identified spectra" 
-  [PSI:QC];
-- *RatioCharge3over2*, **Charged spectra ratio 3+ over 2+** (QC:4000180), 
-  "Ratio of 3+ peptide count over 2+ peptide count in all MS2" [PSI:QC];
-- *RatioCharge4over2*, **Charged peptides ratio 4+ over 2+** (QC:4000176), 
-  "Ratio of 4+ peptide count  over 2+ peptide count in identified spectra" 
-  [PSI:QC];
-- *RatioCharge4over2*, **Charged spectra ratio 4+ over 2+** (QC:4000181), 
-  "Ratio of 4+ peptide count over 2+ peptide count in all MS2" [PSI:QC];
-- *meanCharge*, **Mean charge in identified spectra** (QC:4000177), 
-  "Mean charge in identified spectra" [PSI:QC];
-- *meanCharge*, **Mean precursor charge in all MS2** (QC:4000182), 
-  "Mean precursor charge in all MS2" [PSI:QC];
-- *medianCharge*, **Median charge in identified spectra** (QC:4000178), 
-  "Median charge in identified spectra" [PSI:QC];
-- *medianCharge*, **Median precursor charge in all MS2** (QC:4000183), 
-  "Median precursor charge in all MS2" [PSI:QC].
+number of metrics could be calculated.
 
 The metrics are calculated using the function 
 `calculateMetricsFromSpectra`, which takes as input the `Spectra` object, 
 `sps`, and the above-defined metrics.
 We calculate the metrics separately for the MS1 (`msLevel 1`) and MS2 spectra
-(`msLevel 2`).
+(`msLevel 2`). In addition, the metrics are calculated on the `Spectra` objects
+where zero-intensity, `Inf`-intensity, and zero-length entries are removed 
+(`filterEmptySpectra = FALSE`) and where the `Spectra` objects are not 
+filtered (`filterEmptySpectra = TRUE`).
 
+```{r, eval = FALSE}
+metrics <- c("chromatographyDuration", "ticQuartersRtFraction", 
+    "rtOverMsQuarters", "ticQuartileToQuartileLogRatio", "numberSpectra",
+    "numberEmptyScans", "medianPrecursorMz", "rtIqr", "rtIqrRate", 
+    "areaUnderTic", "areaUnderTicRtQuantiles", "medianTicRtIqr", 
+    "medianTicOfRtRange", "mzAcquisitionRange", "rtAcquisitionRange",
+    "precursorIntensityRange", "precursorIntensityQuartiles", 
+    "precursorIntensityMean", "precursorIntensitySd", "msSignal10xChange",
+    "ratioCharge1over2", "ratioCharge3over2", "ratioCharge4over2", 
+    "meanCharge", "medianCharge")
 
-```{r, eval = FALSE, cache = TRUE}
-metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
-    "ticQuartileToQuartileLogRatio", "numberSpectra", 
-    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
-    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
-    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
-    "precursorIntensityQuartiles", "precursorIntensityMean", 
-    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
-    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
-    "medianCharge")
+## remove zero-intensity and zero-length entries
+metrics_sps_msLevel1_filtered <- calculateMetricsFromSpectra(spectra = sps, 
+    metrics = metrics, filterEmptySpectra = TRUE, msLevel = 1L)
+metrics_sps_msLevel1_filtered <- calculateMetricsFromSpectra(spectra = sps, 
+    metrics = metrics, filterEmptySpectra = TRUE, msLevel = 2L)
 
+## take the entries as they are
 metrics_sps_msLevel1 <- calculateMetricsFromSpectra(spectra = sps, 
-    metrics = metrics, msLevel = 1L)
+    metrics = metrics, filterEmptySpectra = FALSE, msLevel = 1L)
 metrics_sps_msLevel1 <- calculateMetricsFromSpectra(spectra = sps, 
-    metrics = metrics, msLevel = 2L)
+    metrics = metrics, filterEmptySpectra = FALSE, msLevel = 2L)
 ```
 
-
 ```{r metrics_sps_saveRDS_Amidan2014, echo = FALSE, eval = FALSE}
+saveRDS(metrics_sps_msLevel1_filtered, 
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel1_filtered.RDS")
+saveRDS(metrics_sps_msLevel2_filtered, 
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel2_filtered.RDS")
 saveRDS(metrics_sps_msLevel1, 
     file = "../Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
 saveRDS(metrics_sps_msLevel2, 
     file = "../Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
 ```
 
-```{r metrics_sps_readRDS_Amidan2014, echo = FALSE, eval = TRUE}
-metrics_sps_msLevel1 <- readRDS("../Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
-metrics_sps_msLevel2 <- readRDS("../Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
+```{r metrics_sps_readRDS_Amidan2014, echo = FALSE, eval = TRUE, cache = FALSE}
+metrics_sps_msLevel1_filtered <- readRDS(
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel1_filtered.RDS")
+metrics_sps_msLevel2_filtered <- readRDS(
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel2_filtered.RDS")
+metrics_sps_msLevel1 <- readRDS(
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel1.RDS")
+metrics_sps_msLevel2 <- readRDS(
+    file = "../Amidan2014/Amidan2014_metrics_sps_msLevel2.RDS")
 ```
 
 Overall, this function provides a flexible and 
@@ -604,21 +1229,36 @@ In the analysis of the @Amidan2014 study, the quality metrics were
 visualized using the `ggplot2` package. The XLS files pr401143e_si_002.xls
 and pr401143e_si_003.xls (provided as Supplemental Material of the original
 publication) was used to extract information on the measurement quality.
-This information was added to the `metrics_sps_msLevel1` and 
+This information was added to the `metrics_sps_msLevel1_filtered`, 
+`metrics_sps_msLevel2_filtered`, `metrics_sps_msLevel1` and 
 `metrics_sps_msLevel2` objects.
 
-The Figures \@ref(fig:areaUnderTic-amidan2014), 
-\@ref(fig:areaUnderTicRtQuantiles-amidan2014), and
-\@ref(fig:ticQuartileToQuartileLogRatio-amidan2014) were created as examples 
+The Figures \@ref(fig:numberSpectra-amidan2014),
+\@ref(fig:areaUnderTic-amidan2014), 
+\@ref(fig:areaUnderTicRtQuantiles-MS1-amidan2014), 
+\@ref(fig:areaUnderTicRtQuantiles-MS2-amidan2014),
+\@ref(fig:ticQuartileToQuartileLogRatio-MS1-amidan2014), and
+\@ref(fig:ticQuartileToQuartileLogRatio-MS2-amidan2014) were created as examples 
 to compare the differences between the low- and high-quality measurements 
-for several of the supported quality metrics.
+for several of the supported quality metrics. `filtered` refers to the metrics
+where `filterEmptySpectra` was set to `TRUE`, on the other hand, `unfiltered`
+refers to the metrics where `filterEmptySpectra` was set to `FALSE`.
 
-While the metric `rtDuration` (retention time) is a continuous variable,
+While the metric `chromatographyDuration` (retention time) is a continuous variable,
 for visualization purposes we will bin the variable to discrete values and 
 will use the measurements over 60 min and 100 min for visualization.
 
-```{r join_metrics_and_metadata, echo = FALSE}
+
+```{r join_metrics_and_metadata, echo = FALSE, cache = FALSE}
 ## reshape the metrics into long format
+metrics_sps_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    as.data.frame() |>
+    rownames_to_column(var = "rowname") |>
+    as_tibble()
+metrics_sps_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    as.data.frame() |>
+    rownames_to_column(var = "rowname") |>
+    as_tibble()
 metrics_sps_msLevel1 <- metrics_sps_msLevel1 |>
     as.data.frame() |>
     rownames_to_column(var = "rowname") |>
@@ -630,6 +1270,18 @@ metrics_sps_msLevel2 <- metrics_sps_msLevel2 |>
 
 ## for visualization purposes truncate the dataOrigin, the rowname entry
 ## will contain the measurement name
+metrics_sps_msLevel1_filtered[["rowname"]] <- metrics_sps_msLevel1_filtered[["rowname"]] |>
+    strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() |>
+    str_remove(pattern = ".mzML") |>
+    make.names()
+metrics_sps_msLevel2_filtered[["rowname"]] <- metrics_sps_msLevel2_filtered[["rowname"]] |>
+    strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
+    lapply(FUN = function(names_i) names_i[[2]]) |> 
+    unlist() |>
+    str_remove(pattern = ".mzML") |>
+    make.names()
 metrics_sps_msLevel1[["rowname"]] <- metrics_sps_msLevel1[["rowname"]] |>
     strsplit(split = "Amidan2014/[1-5]_of_5/", fixed = FALSE) |>
     lapply(FUN = function(names_i) names_i[[2]]) |> 
@@ -643,60 +1295,129 @@ metrics_sps_msLevel2[["rowname"]] <- metrics_sps_msLevel2[["rowname"]] |>
     str_remove(pattern = ".mzML") |>
     make.names()
 
+## add here information on the QuaMeter metrics of each measurement (information 
+## stored in metrics_quameter)
+metrics_quameter <- rbind(
+    read.table("../Amidan2014/metrics_quameter_01.tsv", header = TRUE),
+    read.table("../Amidan2014/metrics_quameter_02.tsv", header = TRUE),
+    read.table("../Amidan2014/metrics_quameter_03.tsv", header = TRUE),
+    read.table("../Amidan2014/metrics_quameter_04.tsv", header = TRUE),
+    read.table("../Amidan2014/metrics_quameter_05.tsv", header = TRUE))
+metrics_quameter[["Filename"]] <- str_remove(
+    string = metrics_quameter[["Filename"]], pattern = ".mzML") |>
+    make.names()
+metrics_quameter <- metrics_quameter |>
+    as.data.frame() |>
+    filter(!duplicated(Filename)) |>
+    DataFrame()
+
+## join with the QuaMeter metrics
+metrics_sps_msLevel1_filtered <- inner_join(metrics_sps_msLevel1_filtered, 
+    metrics_quameter, by = c("rowname" = "Filename"), copy = TRUE)
+metrics_sps_msLevel2_filtered <- inner_join(metrics_sps_msLevel2_filtered, 
+    metrics_quameter, by = c("rowname" = "Filename"), copy = TRUE)
+metrics_sps_msLevel1 <- inner_join(metrics_sps_msLevel1, metrics_quameter, 
+    by = c("rowname" = "Filename"), copy = TRUE)
+metrics_sps_msLevel2 <- inner_join(metrics_sps_msLevel2, metrics_quameter, 
+    by = c("rowname" = "Filename"), copy = TRUE)
+
 ## add here information on the classification of measurement (information 
-## stored in easurements)
+## stored in measurements)
 measurements_training <- read_excel("../Amidan2014/pr401143e_si_002.xls",
     sheet = "FileS1_TrainingDataset")
 measurements_validation <- read_excel("../Amidan2014/pr401143e_si_003.xls",
     sheet = "FileS2_ValidationDataset")
-cols <- intersect(colnames(measurements_training), 
-    colnames(measurements_validation))
+cols <- c("Instrument_Category", "Instrument", "Dataset_ID", "Dataset",
+    "Dataset_Type", "Curated_Quality", "IS_1A")
 measurements <- rbind(measurements_training[, cols], measurements_validation[, cols])
-measurements[["Dataset"]] <- measurements[["Dataset"]] |> 
+measurements[["Dataset"]] <- measurements[["Dataset"]] |>
     make.names()
 
+## join with the metadata DataFrames
+metrics_sps_msLevel1_filtered <- inner_join(metrics_sps_msLevel1_filtered, 
+    measurements, by = c("rowname" = "Dataset"), copy = TRUE)
+metrics_sps_msLevel2_filtered <- inner_join(metrics_sps_msLevel2_filtered, 
+    measurements, by = c("rowname" = "Dataset"), copy = TRUE)
 metrics_sps_msLevel1 <- inner_join(metrics_sps_msLevel1, measurements, 
     by = c("rowname" = "Dataset"), copy = TRUE)
 metrics_sps_msLevel2 <- inner_join(metrics_sps_msLevel2, measurements, 
     by = c("rowname" = "Dataset"), copy = TRUE)
 
 ## in the following bin the retention times
-metrics_sps_msLevel1$rtDuration_new <- ifelse(
-    metrics_sps_msLevel1$rtDuration > 3200 & 
-    metrics_sps_msLevel1$rtDuration < 4000, 3600, 
-    metrics_sps_msLevel1$rtDuration)
-metrics_sps_msLevel1$rtDuration_new <- ifelse(
-    metrics_sps_msLevel1$rtDuration_new > 5600 & 
-    metrics_sps_msLevel1$rtDuration_new < 6400, 6000, 
-    metrics_sps_msLevel1$rtDuration_new)
-metrics_sps_msLevel1$rtDuration_new <- ifelse(
-    metrics_sps_msLevel1$rtDuration_new > 10400 & 
-    metrics_sps_msLevel1$rtDuration_new < 11200, 10800, 
-    metrics_sps_msLevel1$rtDuration_new)
-metrics_sps_msLevel1$rtDuration_new <- ifelse(
-    metrics_sps_msLevel1$rtDuration_new > 14000 & 
-    metrics_sps_msLevel1$rtDuration_new < 14800, 14400, 
-    metrics_sps_msLevel1$rtDuration_new)
-metrics_sps_msLevel1$rtDuration_new <- metrics_sps_msLevel1$rtDuration_new |>
+metrics_sps_msLevel1_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1_filtered$chromatographyDuration > 3200 & 
+    metrics_sps_msLevel1_filtered$chromatographyDuration < 4000, 3600, 
+    metrics_sps_msLevel1_filtered$chromatographyDuration)
+metrics_sps_msLevel1_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new > 5600 & 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new < 6400, 6000, 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new)
+metrics_sps_msLevel1_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new > 10400 & 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new < 11200, 10800, 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new)
+metrics_sps_msLevel1_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new > 14000 & 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new < 14800, 14400, 
+    metrics_sps_msLevel1_filtered$chromatographyDuration_new)
+metrics_sps_msLevel1_filtered$chromatographyDuration_new <- metrics_sps_msLevel1_filtered$chromatographyDuration_new |>
     as.factor()
 
-metrics_sps_msLevel2$rtDuration_new <- ifelse(
-    metrics_sps_msLevel2$rtDuration > 3200 & 
-    metrics_sps_msLevel2$rtDuration < 4000, 3600, 
-    metrics_sps_msLevel2$rtDuration)
-metrics_sps_msLevel2$rtDuration_new <- ifelse(
-    metrics_sps_msLevel2$rtDuration_new > 5600 & 
-    metrics_sps_msLevel2$rtDuration_new < 6400, 6000, 
-    metrics_sps_msLevel2$rtDuration_new)
-metrics_sps_msLevel2$rtDuration_new <- ifelse(
-    metrics_sps_msLevel2$rtDuration_new > 10400 & 
-    metrics_sps_msLevel2$rtDuration_new < 11200, 10800, 
-    metrics_sps_msLevel2$rtDuration_new)
-metrics_sps_msLevel2$rtDuration_new <- ifelse(
-    metrics_sps_msLevel2$rtDuration_new > 14000 & 
-    metrics_sps_msLevel2$rtDuration_new < 14800, 14400, 
-    metrics_sps_msLevel2$rtDuration_new)
-metrics_sps_msLevel2$rtDuration_new <- metrics_sps_msLevel2$rtDuration_new |>
+metrics_sps_msLevel2_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2_filtered$chromatographyDuration > 3200 & 
+    metrics_sps_msLevel2_filtered$chromatographyDuration < 4000, 3600, 
+    metrics_sps_msLevel2_filtered$chromatographyDuration)
+metrics_sps_msLevel2_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new > 5600 & 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new < 6400, 6000, 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new)
+metrics_sps_msLevel2_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new > 10400 & 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new < 11200, 10800, 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new)
+metrics_sps_msLevel2_filtered$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new > 14000 & 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new < 14800, 14400, 
+    metrics_sps_msLevel2_filtered$chromatographyDuration_new)
+metrics_sps_msLevel2_filtered$chromatographyDuration_new <- metrics_sps_msLevel2_filtered$chromatographyDuration_new |>
+    as.factor()
+
+metrics_sps_msLevel1$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1$chromatographyDuration > 3200 & 
+    metrics_sps_msLevel1$chromatographyDuration < 4000, 3600, 
+    metrics_sps_msLevel1$chromatographyDuration)
+metrics_sps_msLevel1$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1$chromatographyDuration_new > 5600 & 
+    metrics_sps_msLevel1$chromatographyDuration_new < 6400, 6000, 
+    metrics_sps_msLevel1$chromatographyDuration_new)
+metrics_sps_msLevel1$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1$chromatographyDuration_new > 10400 & 
+    metrics_sps_msLevel1$chromatographyDuration_new < 11200, 10800, 
+    metrics_sps_msLevel1$chromatographyDuration_new)
+metrics_sps_msLevel1$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel1$chromatographyDuration_new > 14000 & 
+    metrics_sps_msLevel1$chromatographyDuration_new < 14800, 14400, 
+    metrics_sps_msLevel1$chromatographyDuration_new)
+metrics_sps_msLevel1$chromatographyDuration_new <- metrics_sps_msLevel1$chromatographyDuration_new |>
+    as.factor()
+
+metrics_sps_msLevel2$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2$chromatographyDuration > 3200 & 
+    metrics_sps_msLevel2$chromatographyDuration < 4000, 3600, 
+    metrics_sps_msLevel2$chromatographyDuration)
+metrics_sps_msLevel2$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2$chromatographyDuration_new > 5600 & 
+    metrics_sps_msLevel2$chromatographyDuration_new < 6400, 6000, 
+    metrics_sps_msLevel2$chromatographyDuration_new)
+metrics_sps_msLevel2$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2$chromatographyDuration_new > 10400 & 
+    metrics_sps_msLevel2$chromatographyDuration_new < 11200, 10800, 
+    metrics_sps_msLevel2$chromatographyDuration_new)
+metrics_sps_msLevel2$chromatographyDuration_new <- ifelse(
+    metrics_sps_msLevel2$chromatographyDuration_new > 14000 & 
+    metrics_sps_msLevel2$chromatographyDuration_new < 14800, 14400, 
+    metrics_sps_msLevel2$chromatographyDuration_new)
+metrics_sps_msLevel2$chromatographyDuration_new <- metrics_sps_msLevel2$chromatographyDuration_new |>
     as.factor()
 ```
 
@@ -707,41 +1428,58 @@ plot_beeswarm <- function(metrics,
     selected_metric = "areaUnderTicRtQuantiles.25%", 
     ylim = c(0, 1.2e12), 
     plot_margin_1 = unit(c(-0.1, 0.5, -0.0, 0), "cm"), 
-    plot_margin_2 = unit(c(-0.1, 0.5, -0.0, 0), "cm"), aspect.ratio = 1) {
+    plot_margin_2 = unit(c(-0.1, 0.5, -0.0, 0), "cm"), aspect.ratio = 1,
+    add_grid_ttest = FALSE) {
 
     .levels <- c("60 min", "100 min") ## 3600, 6000
     metrics <- metrics |>
-        mutate(rtDuration_new = as.numeric(as.character(rtDuration_new))) |>
-        mutate(rtDuration_new = rtDuration_new / 60) |>
-        mutate(rtDuration_new = factor(rtDuration_new, levels = c(60, 100),
-                labels = c("60 min", "100 min"))) |>
-        filter(rtDuration_new %in% .levels) |> 
+        mutate(chromatographyDuration_new = as.numeric(
+            as.character(chromatographyDuration_new))) |>
+        mutate(chromatographyDuration_new = chromatographyDuration_new / 60) |>
+        mutate(chromatographyDuration_new = factor(chromatographyDuration_new, 
+                levels = c(60, 100),
+            labels = c("60 min", "100 min"))) |>
+        filter(chromatographyDuration_new %in% .levels) |> 
         filter(Curated_Quality %in% c("good", "poor")) |>
         filter(!duplicated(rowname)) |>
-            select(all_of(c("rowname", "Curated_Quality", "rtDuration_new", 
+            select(all_of(c("rowname", "Curated_Quality", "chromatographyDuration_new", 
                 selected_metric)))
     
     P <- list()
     
     for (i in seq_along(.levels)) {
         metrics_i <- metrics |>
-            filter(rtDuration_new %in% .levels[i]) |>
+            filter(chromatographyDuration_new %in% .levels[i]) |>
             pivot_longer(cols = selected_metric) |>
             filter(!is.na(value)) |>
             filter(value != Inf)
         
         P[[i]] <- metrics_i |> 
             ggplot(aes(x = Curated_Quality, y = value, col = Curated_Quality)) +
-                geom_beeswarm(aes(x = Curated_Quality, y = value), method = "compactswarm", cex = 0.8, size = 0.001) +
+                geom_beeswarm(aes(x = Curated_Quality, y = value), 
+                    method = "compactswarm", cex = 0.8, size = 0.001) +
                 #geom_point(aes(x = Curated_Quality, y = value), 
                 #    position = position_jitter(width = 0.2, height = 0), alpha = 0.05) +
-                facet_grid( ~ rtDuration_new, scales = "free_x") +
+                facet_grid( ~ chromatographyDuration_new, scales = "free_x") +
                 #geom_violin(scale = "count") +
-                scale_y_continuous(limits = ylim) +
-                theme_classic() +
-                theme(legend.position = "none", axis.title = element_blank(),
-                    plot.margin = plot_margin_1) + 
-                theme(aspect.ratio = aspect.ratio)
+                scale_y_continuous(limits = ylim)
+        
+        if (add_grid_ttest) {
+            comparisons <- list(c("good", "poor"))
+            P[[i]] <- P[[i]] + 
+                stat_compare_means(comparisons = comparisons, 
+                    method = "t.test", label = "p.signif", 
+                    method.args = list(alternative = "greater")) +
+                theme_bw()
+        } else
+            P[[i]] <- P[[i]] + theme_classic() 
+        
+        P[[i]] <- P[[i]] +
+            theme(legend.position = "none", axis.title = element_blank(),
+                plot.margin = plot_margin_1) + 
+            theme(aspect.ratio = aspect.ratio)
+        
+        
         
         if (i == 2) 
             P[[i]] <- P[[i]] + 
@@ -755,40 +1493,177 @@ plot_beeswarm <- function(metrics,
 }
 ```
 
+```{r numberSpectra-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Number of MS1 and MS2 spectra (`numberSpectra`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Number of filtered MS1 spectra. (b) Number of unfiltered MS1 spectra. (c) Number of filtered MS2 spectra. (d) Number of unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, cache = FALSE}
 
-```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Area under TIC for MS1 spectra. (b) Area under TIC for MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE}
-xlim <- c(25, 250)
 ## area under TIC
-gg_tic_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-      selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
-      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
-      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
-gg_tic_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
-      selected_metric = "areaUnderTic", ylim = c(0, 16e10), 
-      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
-      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2) 
+gg_numberSpectra_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "numberSpectra", ylim = c(0, 20000), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_numberSpectra_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "numberSpectra", ylim = c(0, 20000), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_numberSpectra_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "numberSpectra", ylim = c(0, 40000), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2) 
+gg_numberSpectra_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "numberSpectra", ylim = c(0, 40000), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2) 
 
-p <- ggarrange(gg_tic_msLevel1,  gg_tic_msLevel2, ncol = 2, nrow = 1, 
-    labels = "auto")
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel1_filtered, labels = "a"), 
+        left = "MS1", top = "filtered"),
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel1, labels = "b"), 
+        top = "unfiltered"),
+    ncol = 2, nrow = 1)
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel2_filtered, labels = "c"), 
+        left = "MS2"),
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel2, labels = "d")),
+    ncol = 2, nrow = 1)
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2, align = "v")
+
+annotate_figure(p, top = text_grob("number of spectra"))
+```
+
+
+```{r areaUnderTic-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC (`areaUnderTic`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) Area under TIC for filtered MS1 spectra. (b) Area under TIC for unfiltered MS1 spectra. (c) Area under TIC for filtered MS2 spectra. (d) Area under TIC for unfiltered MS2 spectra. A.U.: arbitrary units.", warning = FALSE, echo = FALSE, cache = FALSE}
+## area under TIC
+gg_tic_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_tic_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "areaUnderTic", ylim = c(0, 16e10), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_tic_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2)
+gg_tic_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
+    selected_metric = "areaUnderTic", ylim = c(0, 16e10), 
+    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 2) 
+
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic_msLevel1_filtered, labels = "a"), 
+        top = "filtered", left = "MS1"),
+    annotate_figure(ggarrange(gg_tic_msLevel1, labels = "b"), 
+        top = "unfiltered"),
+    ncol = 2, nrow = 1)
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic_msLevel2_filtered, labels = "c"), 
+        left = "MS2"),
+    annotate_figure(ggarrange(gg_tic_msLevel2, labels = "d")),
+    ncol = 2, nrow = 1)
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2, align = "v")
+
 annotate_figure(p, top = text_grob("area under TIC (A.U.)"))
 ```
 
-```{r areaUnderTicRtQuantiles-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for MS1 spectra. (b) 25% quantile for MS2 spectra. (c) 50% quantile for MS1 spectra. (d) 50% quantile for MS2 spectra.E: 75% quantile for MS1 spectra. (f) 75% quantile for MS2 spectra. (g) 100% quantile for MS1 spectra. (h) 100% quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7.5}
+```{r areaUnderTicRtQuantiles-MS1-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for filtered MS1 spectra. (b) 25% quantile for unfiltered MS1 spectra. (c) 50% quantile for filtered MS1 spectra. (d) 50% quantile for unfiltered MS1 spectra. (e): 75% quantile for filtered MS1 spectra. (f) 75% quantile for unfiltered MS1 spectra. (g) 100% quantile for filtered MS1 spectra. (h) 100% quantile for unfiltered MS1 spectra.", warning = FALSE, echo = FALSE, fig.height = 7.5, cache = FALSE}
 
 ## areaUnderTicRtQuantiles
 ## areaUnderTicRtQuantiles 25%
+gg_tic25_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 1.2e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 gg_tic25_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
     selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 1.2e12),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+## areaUnderTicRtQuantiles 50%
+gg_tic50_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic50_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+## areaUnderTicRtQuantiles 75%
+gg_tic75_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic75_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4e12),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+## areaUnderTicRtQuantiles 100%
+gg_tic100_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 12e11),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic100_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 12e11),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic25_msLevel1_filtered, labels = "a"), 
+        top = "filtered", left = "25%"),
+    annotate_figure(ggarrange(gg_tic25_msLevel1, labels = "b"), 
+        top = "unfiltered"),
+    ncol = 2, nrow = 1)
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic50_msLevel1_filtered, labels = "c"), 
+        left = "50%"),
+    annotate_figure(ggarrange(gg_tic50_msLevel1, labels = "d")),
+    ncol = 2, nrow = 1)
+row3 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic75_msLevel1_filtered, labels = "e"), 
+        left = "75%"),
+    annotate_figure(ggarrange(gg_tic75_msLevel1, labels = "f")),
+    ncol = 2, nrow = 1)
+row4 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic100_msLevel1_filtered, labels = "g"), 
+        left = "100%"),
+    annotate_figure(ggarrange(gg_tic100_msLevel1, labels = "h")),
+    ncol = 2, nrow = 1)
+p <- ggarrange(row1, row2, row3, row4, ncol = 1, nrow = 4, align = "v")
+
+annotate_figure(p, top = text_grob("area under TIC RT quantile (A.U.)"))
+```
+
+```{r areaUnderTicRtQuantiles-MS2-amidan2014, fig.cap = "Quality metrics by `MsQuality`: Area under TIC RT quantiles (`areaUnderTicRtQuantiles`). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) 25% quantile for filtered MS2 spectra. (b) 25% quantile for unfiltered MS2 spectra. (c) 50% quantile for filtered MS2 spectra. (d) 50% quantile for unfiltered MS2 spectra. (e): 75% quantile for filtered MS2 spectra. (f) 75% quantile for unfiltered MS2 spectra. (g) 100% quantile for filtered MS2 spectra. (h) 100% quantile for unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7.5, cache = FALSE}
+
+## areaUnderTicRtQuantiles
+## areaUnderTicRtQuantiles 25%
+gg_tic25_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 3.2e10),
+    plot_margin_1 = unit(c(-0.1, -2, -0.0, -2), "cm"), 
+    plot_margin_2 = unit(c(-0.1, -2, -0.0, -2), "cm"), aspect.ratio = 1)
 gg_tic25_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
     selected_metric = "areaUnderTicRtQuantiles.25%", ylim = c(0, 3.2e10),
     plot_margin_1 = unit(c(-0.1, -2, -0.0, -2), "cm"), 
     plot_margin_2 = unit(c(-0.1, -2, -0.0, -2), "cm"), aspect.ratio = 1)
 
 ## areaUnderTicRtQuantiles 50%
-gg_tic50_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
+gg_tic50_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 8e10),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 gg_tic50_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
@@ -797,8 +1672,9 @@ gg_tic50_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2,
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 ## areaUnderTicRtQuantiles 75%
-gg_tic75_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4e12),
+gg_tic75_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.75%", ylim = c(0, 4.5e10),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 gg_tic75_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
@@ -807,8 +1683,9 @@ gg_tic75_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2,
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 ## areaUnderTicRtQuantiles 100%
-gg_tic100_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 12e11),
+gg_tic100_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "areaUnderTicRtQuantiles.100%", ylim = c(0, 1.2e10),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 gg_tic100_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
@@ -817,36 +1694,96 @@ gg_tic100_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2,
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 row1 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic25_msLevel1, labels = "a"), top = "MS1", 
+    annotate_figure(ggarrange(gg_tic25_msLevel2_filtered, labels = "a"), top = "filtered", 
         left = "25%"),
-    annotate_figure(ggarrange(gg_tic25_msLevel2, labels = "b"), top = "MS2"),
+    annotate_figure(ggarrange(gg_tic25_msLevel2, labels = "b"), top = "unfiltered"),
     ncol = 2, nrow = 1)
 row2 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic50_msLevel1, labels = "c"), left = "50%"),
+    annotate_figure(ggarrange(gg_tic50_msLevel2_filtered, labels = "c"), left = "50%"),
     annotate_figure(ggarrange(gg_tic50_msLevel2, labels = "d")),
     ncol = 2, nrow = 1)
 row3 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic75_msLevel1, labels = "e"), 
+    annotate_figure(ggarrange(gg_tic75_msLevel2_filtered, labels = "e"), 
         left = "75%"),
     annotate_figure(ggarrange(gg_tic75_msLevel2, labels = "f")),
     ncol = 2, nrow = 1)
 row4 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic100_msLevel1, labels = "g"), 
+    annotate_figure(ggarrange(gg_tic100_msLevel2_filtered, labels = "g"), 
         left = "100%"),
     annotate_figure(ggarrange(gg_tic100_msLevel2, labels = "h")),
     ncol = 2, nrow = 1)
 p <- ggarrange(row1, row2, row3, row4, ncol = 1, nrow = 4, align = "v")
 
-annotate_figure(p, top = text_grob("area under TIC RT quantile"))
-
+annotate_figure(p, top = text_grob("area under TIC RT quantile (A.U.)"))
 ```
 
-```{r ticQuartileToQuartileLogRatio-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for MS1 spectra.  (f) log ratio of quartile 4 to quartile 3 for MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7}
+```{r ticQuartileToQuartileLogRatio-MS1-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS1 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS1 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS1 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS1 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS1 spectra.  (f) log ratio of quartile 4 to quartile 3 for unfiltered MS1 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
 
-xlim <- c(25, 250)
 ## ticQuartileToQuartileLogRatio
 ## ticQuartileToQuartileLogRatio Q2/Q1%
+gg_tic_q2_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 gg_tic_q2_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+  
+## ticQuartileToQuartileLogRatio.Q3/Q2
+gg_tic_q3_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic_q3_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+## ticQuartileToQuartileLogRatio.Q4/Q3
+gg_tic_q4_msLevel1_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel1_filtered, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+gg_tic_q4_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(0, 3),
+    plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
+    plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic_q2_msLevel1_filtered, labels = "a"), 
+        top = "filtered"),
+    annotate_figure(ggarrange(gg_tic_q2_msLevel1, labels = "b"), 
+        top = "unfiltered"), 
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q2/Q1")
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic_q3_msLevel1_filtered, labels = "c")),
+    annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "d")), 
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q3/Q2")
+row3 <- ggarrange(
+    annotate_figure(ggarrange(gg_tic_q3_msLevel1_filtered, labels = "e")),
+    annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "f")), 
+        ncol = 2, nrow = 1) |>
+    annotate_figure(left = "Q4/Q3")
+
+p <- ggarrange(row1, row2, row3, ncol = 1, nrow = 3, align = "v", 
+    heights = c(1.1, 1, 1))
+
+annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"))
+```
+
+
+```{r ticQuartileToQuartileLogRatio-MS2-amidan2014, fig.cap = "Quality metrics by `MsQuality`: TIC quartile to quartile log ratio (`ticQuartileToQuartileLogRatio`). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as beeswarm plots stratified for high-quality and low-quality measurements as classified in @Amidan2014. (a) log ratio of quartile 2 to quartile 1 for filtered MS2 spectra. (b) log ratio of quartile 2 to quartile 1 for unfiltered MS2 spectra. (c) log ratio of quartile 3 to quartile 2 for filtered MS2 spectra. (d) log ratio of quartile 3 to quartile 2 for unfiltered MS2 spectra. (e) log ratio of quartile 4 to quartile 3 for filtered MS2 spectra.  (f) log ratio of quartile 4 to quartile 3 for unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, fig.height = 7, cache = FALSE}
+
+## ticQuartileToQuartileLogRatio
+## ticQuartileToQuartileLogRatio Q2/Q1%
+gg_tic_q2_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
     selected_metric = "ticQuartileToQuartileLogRatio.Q2/Q1", ylim = c(0, 3.5),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
@@ -856,7 +1793,8 @@ gg_tic_q2_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2,
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
   
 ## ticQuartileToQuartileLogRatio.Q3/Q2
-gg_tic_q3_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
+gg_tic_q3_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
     selected_metric = "ticQuartileToQuartileLogRatio.Q3/Q2", ylim = c(0, 3),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
@@ -866,27 +1804,30 @@ gg_tic_q3_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2,
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 ## ticQuartileToQuartileLogRatio.Q4/Q3
-gg_tic_q4_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(0, 3),
+gg_tic_q4_msLevel2_filtered <- plot_beeswarm(
+    metrics = metrics_sps_msLevel2_filtered, 
+    selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(1.9, 7.8),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
+
 gg_tic_q4_msLevel2 <- plot_beeswarm(metrics = metrics_sps_msLevel2, 
     selected_metric = "ticQuartileToQuartileLogRatio.Q4/Q3", ylim = c(1.9, 7.8),
     plot_margin_1 = unit(c(-2.1, -5, -2.0, -5), "cm"), 
     plot_margin_2 = unit(c(-2.1, -5, -2.0, -5), "cm"), aspect.ratio = 1)
 
 row1 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic_q2_msLevel1, labels = "a"), top = "MS1"),
-    annotate_figure(ggarrange(gg_tic_q2_msLevel2, labels = "b"), top = "MS2"), 
+    annotate_figure(ggarrange(gg_tic_q2_msLevel2_filtered, labels = "a"), 
+        top = "filtered"),
+    annotate_figure(ggarrange(gg_tic_q2_msLevel2, labels = "b"), top = "unfiltered"), 
         ncol = 2, nrow = 1) |>
     annotate_figure(left = "Q2/Q1")
 row2 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "c")),
+    annotate_figure(ggarrange(gg_tic_q3_msLevel2_filtered, labels = "c")),
     annotate_figure(ggarrange(gg_tic_q3_msLevel2, labels = "d")), 
         ncol = 2, nrow = 1) |>
     annotate_figure(left = "Q3/Q2")
 row3 <- ggarrange(
-    annotate_figure(ggarrange(gg_tic_q3_msLevel1, labels = "e")),
+    annotate_figure(ggarrange(gg_tic_q3_msLevel2_filtered, labels = "e")),
     annotate_figure(ggarrange(gg_tic_q3_msLevel2, labels = "f")), 
         ncol = 2, nrow = 1) |>
     annotate_figure(left = "Q4/Q3")
@@ -897,8 +1838,9 @@ p <- ggarrange(row1, row2, row3, ncol = 1, nrow = 3, align = "v",
 annotate_figure(p, top = text_grob("TIC quartile to quartile log ratio"))
 ```
 
-The Figures \@ref(fig:areaUnderTic-amidan2014) and
-\@ref(fig:areaUnderTicRtQuantiles-amidan2014) demonstrate that the 
+The Figures \@ref(fig:areaUnderTic-amidan2014),
+\@ref(fig:areaUnderTicRtQuantiles-MS1-amidan2014), and
+\@ref(fig:areaUnderTicRtQuantiles-MS2-amidan2014) demonstrate that the 
 low-quality measurements (`poor`) have lower total ion current (TIC) values 
 compared to high-quality measurements (`good`). 
 The Figures serve as a visual check to differences in TIC values and aids in 
@@ -907,54 +1849,123 @@ a further stratification (e.g. along the instrument type) might be helpful
 to further point out differences between the levels of data quality of the
 @Amidan2014 data set.
 
-The Figure \@ref(fig:ticQuartileToQuartileLogRatio-amidan2014) on the other 
-hand does not indicate differences between data quality and might 
+The Figures \@ref(fig:numberSpectra-amidan2014), 
+\@ref(fig:ticQuartileToQuartileLogRatio-MS1-amidan2014), and
+\@ref(fig:ticQuartileToQuartileLogRatio-MS2-amidan2014) on the other 
+hand do not indicate differences between data quality and might 
 not be indicative for the quality issues of the @Amidan2014 data 
 set.
 
 ### Comparison to QuaMeter metrics
 
-The XLS files also contain precalculated `QuaMeter` metrics [@Ma2012] for each of 
-the measurements. In the following, we will compare the `QuaMeter` metrics to the
+In the following, we will compare the `QuaMeter` metrics to the
 `MsQuality` metrics to check if `MsQuality` shows concordant results
-compared to `QuaMeter`.
+compared to `QuaMeter`. The `QuaMeter` metrics were calculated via the 
+command line tool `bumbershoot` with `-MetricsType` set to `idfree`. The
+metric `IS-1A` was taken from the Supplemental Files of @Amidan2014 since its
+calculation is not supported by the current version of `bumbershoot` 
+(@Chambers2012, Linux, 64-bit, gcc7-release-3_0_23220).
 
-```{r rtDurationComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT duration (`rtDuration`). The corresponding metric for `QuaMeter` is `RT_Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) RT duration for MS1 spectra (`QuaMeter` metric: `RT_Duration`). (b) RT duration for MS2 spectra (`QuaMeter` metric: `RT_Duration`).", echo = FALSE, warning = FALSE}
-## rtDuration (MsQuality) vs. RT_Duration (QuaMeter)
-gg_rt_msLevel1 <- metrics_sps_msLevel1 |>
+`QuaMeter` removes the entries of .mzML files with
+`defaultArrayLength=0` at any MS level. Thus, the metrics that were calculated 
+by the .mzML files where the zero-length and zero-intensity entries were 
+removed showed higher correlation compared to the unfiltered files. We provide
+flexibility to remove zero-length and zero-intensity entries 
+by setting the argument `filterEmptySpectra` to `TRUE` or `FALSE`
+depending on the intended behavior. 
+
+```{r chromatographyDuration-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: chromatography duration (`chromatographyDuration`). The corresponding metric for `QuaMeter` is `RT-Duration` (no specification if the metric was calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) chromatography duration for filtered MS1 spectra (`QuaMeter` metric: `RT-Duration`). (b) chromatography duration for unfiltered MS1 spectra (`QuaMeter` metric: `RT-Duration`). (c) chromatography duration for filtered MS2 spectra (`QuaMeter` metric: `RT-Duration`). (d) chromatography duration for unfiltered MS2 spectra (`QuaMeter` metric: `RT-Duration`).", echo = FALSE, warning = FALSE, cache = FALSE}
+## chromatographyDuration (MsQuality) vs. RT-Duration (QuaMeter)
+gg_rt_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = rtDuration/60, y = RT_Duration/60)) +
+    ggplot(aes(x = chromatographyDuration/60, y = RT.Duration/60)) +
         geom_bin_2d(bins = 30) +
         xlab("MsQuality (MS1)") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
-        xlim(0, 610) + ylim(0, 610) +
+        xlim(0, 630) + ylim(0, 630) +
         theme(legend.position = "none")
 
-gg_rt_msLevel2 <- metrics_sps_msLevel2 |>
+gg_rt_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = rtDuration/60, y = RT_Duration/60)) +
+    ggplot(aes(x = chromatographyDuration/60, y = RT.Duration/60)) +
+        geom_bin_2d(bins = 30) +
+        xlab("MsQuality (MS1)") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        xlim(0, 630) + ylim(0, 630) +
+        theme(legend.position = "none")
+
+## chromatographyDuration (MsQuality) vs. RT-Duration (QuaMeter)
+gg_rt_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = chromatographyDuration/60, y = RT.Duration/60)) +
         geom_bin_2d(bins = 30) +
         xlab("MsQuality (MS2)") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
         theme_classic() +
-        xlim(0, 610) + ylim(0, 610) +
+        xlim(0, 630) + ylim(0, 630) +
         theme(legend.position = "none")
 
-p <- ggarrange(gg_rt_msLevel1, gg_rt_msLevel2, ncol = 2, nrow = 1, labels = "auto")
-annotate_figure(p, top = text_grob("RT duration (min)"))
+gg_rt_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = chromatographyDuration/60, y = RT.Duration/60)) +
+        geom_bin_2d(bins = 30) +
+        xlab("MsQuality (MS2)") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        xlim(0, 630) + ylim(0, 630) +
+        theme(legend.position = "none")
 
-cor_rtDuration_p <- cor.test(metrics_sps_msLevel1[["rtDuration"]], metrics_sps_msLevel1[["RT_Duration"]], method = "pearson")
-cor_rtDuration_s <- cor.test(metrics_sps_msLevel1[["rtDuration"]], metrics_sps_msLevel1[["RT_Duration"]], method = "spearman")
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_msLevel1_filtered, labels = "a"), 
+        left = "filtered", top = "MS1"),
+    annotate_figure(ggarrange(gg_rt_msLevel2_filtered, labels = "b"), 
+        top = "MS2"),
+    ncol = 2, nrow = 1)
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_msLevel1, labels = "c"), 
+        left = "unfiltered"),
+    annotate_figure(ggarrange(gg_rt_msLevel2, labels = "d")),
+    ncol = 2, nrow = 1)
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2, align = "v")
+
+annotate_figure(p, top = text_grob("chromatography duration (min)"))
+
+
+## calculate correlations
+cor_chromatographyDuration_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["chromatographyDuration"]],
+    metrics_sps_msLevel1_filtered[["RT.Duration"]], method = "pearson")
+cor_chromatographyDuration_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["chromatographyDuration"]],
+    metrics_sps_msLevel1_filtered[["RT.Duration"]], method = "spearman")
+cor_chromatographyDuration_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["chromatographyDuration"]],
+    metrics_sps_msLevel1[["RT.Duration"]], method = "pearson")
+cor_chromatographyDuration_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["chromatographyDuration"]],
+    metrics_sps_msLevel1[["RT.Duration"]], method = "spearman")
+cor_chromatographyDuration_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["chromatographyDuration"]],
+    metrics_sps_msLevel2_filtered[["RT.Duration"]], method = "pearson")
+cor_chromatographyDuration_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["chromatographyDuration"]],
+    metrics_sps_msLevel2_filtered[["RT.Duration"]], method = "spearman")
+cor_chromatographyDuration_msLevel2_p <- cor.test(
+    metrics_sps_msLevel2[["chromatographyDuration"]],
+    metrics_sps_msLevel2[["RT.Duration"]], method = "pearson")
+cor_chromatographyDuration_msLevel2_s <- cor.test(
+    metrics_sps_msLevel2[["chromatographyDuration"]],
+    metrics_sps_msLevel2[["RT.Duration"]], method = "spearman")
 ```
 
-
-```{r numberSpectraComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1_Count` and `MS2_Count`. The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Number of MS1 spectra (`QuaMeter` metric: `MS1_Count`). (b) Number of MS2 spectra (`QuaMeter` metric: `MS2_Count`).", echo = FALSE, warning = FALSE, message=FALSE}
-## 
-##  numberSpectra (MsQuality) vs. MS1_Count (QuaMeter)
-gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
+```{r numberSpectra-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: Number of spectra (`numberSpectra`). The corresponding metrics for `QuaMeter` are `MS1-Count` and `MS2-Count`. The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Number of filtered MS1 spectra (`QuaMeter` metric: `MS1-Count`). (b) Number of unfiltered MS1 spectra (`QuaMeter` metric: `MS1-Count`). (c) Number of filtered MS2 spectra (`QuaMeter` metric: `MS2-Count`). (b) Number of unfiltered MS2 spectra (`QuaMeter` metric: `MS2-Count`).", echo = FALSE, warning = FALSE, message=FALSE, cache = FALSE}
+##  numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
+gg_numberSpectra_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = numberSpectra, y = MS1_Count)) +
+    ggplot(aes(x = numberSpectra, y = MS1.Count)) +
         geom_bin_2d(bins = 30) +
         ##geom_point(alpha = 0.2) +
         coord_fixed(ratio = 1) +
@@ -966,10 +1977,25 @@ gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-##  numberSpectra (MsQuality) vs. MS2_Count (QuaMeter)
-gg_numberSpectra_msLevel2 <- metrics_sps_msLevel2 |>
+##  numberSpectra (MsQuality) vs. MS1-Count (QuaMeter)
+gg_numberSpectra_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = numberSpectra, y = MS2_Count)) +
+    ggplot(aes(x = numberSpectra, y = MS1.Count)) +
+        geom_bin_2d(bins = 30) +
+        ##geom_point(alpha = 0.2) +
+        coord_fixed(ratio = 1) +
+        scale_x_continuous(breaks = seq(0, 15100, 5000), limits = c(0, 15100),
+            labels = scales::format_format(scientific = FALSE)) +
+        scale_y_continuous(breaks = seq(0, 15100, 5000), limits = c(0, 15100),
+            labels = scales::format_format(scientific = FALSE)) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
+gg_numberSpectra_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = numberSpectra, y = MS2.Count)) +
         geom_bin_2d(bins = 30) +
         ##geom_point(alpha = 0.2) +
         xlab("MsQuality") + ylab("QuaMeter") +
@@ -981,174 +2007,402 @@ gg_numberSpectra_msLevel2 <- metrics_sps_msLevel2 |>
         theme_classic() +
         theme(legend.position = "none")
 
-
-col1 <- annotate_figure(ggarrange(gg_numberSpectra_msLevel1, labels = "a"), 
-    top = "MS1") 
-col2 <- annotate_figure(ggarrange(gg_numberSpectra_msLevel2, labels = "b"),
-    top = "MS2")
-
-p <- ggarrange(col1, col2, ncol = 2, nrow = 1)
-annotate_figure(p, top = text_grob("number of spectra"))
-
-## calculate correlation
-cor_numberSpectra_msLevel1_p <- cor.test(
-    metrics_sps_msLevel1[["numberSpectra"]],
-    metrics_sps_msLevel1[["MS1_Count"]], method = "pearson")
-cor_numberSpectra_msLevel1_s <- cor.test(
-    metrics_sps_msLevel1[["numberSpectra"]],
-    metrics_sps_msLevel1[["MS1_Count"]], method = "spearman")
-cor_numberSpectra_msLevel2_p <- cor.test(
-    metrics_sps_msLevel2[["numberSpectra"]],
-    metrics_sps_msLevel2[["MS2_Count"]], method = "pearson")
-cor_numberSpectra_msLevel2_s <- cor.test(
-    metrics_sps_msLevel2[["numberSpectra"]], 
-    metrics_sps_msLevel2[["MS2_Count"]], method = "spearman")
-```
-
-```{r rtOverTicQuantilesComparison-amidan2014,  fig.cap = "Scatterplot between quality metrics calculated by `MsQuality` and `QuaMeter`: RT over TIC quantile (`rtOverTicQuantiles`). The corresponding metrics for `QuaMeter` are `RT_TIC_Q1`, `RT_TIC_Q2`, and `RT_TIC_Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (b) 50% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (c) 75% quantile for MS1 spectra (`QuaMeter` metric: `RT_TIC_Q3`). (d) 25% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q1`). (e) 50% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q2`). (f) 75% quantile for MS2 spectra (`QuaMeter` metric: `RT_TIC_Q3`).", warning = FALSE, echo = FALSE}
-
-## 
-##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q1 (QuaMeter)
-gg_rt_tic_q1_msLevel1 <- metrics_sps_msLevel1 |>
+##  numberSpectra (MsQuality) vs. MS2-Count (QuaMeter)
+gg_numberSpectra_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
-    ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
-        geom_bin_2d(bins = 20) +
+    ggplot(aes(x = numberSpectra, y = MS2.Count)) +
+        geom_bin_2d(bins = 30) +
+        ##geom_point(alpha = 0.2) +
         xlab("MsQuality") + ylab("QuaMeter") +
         coord_fixed(ratio = 1) +
+        scale_x_continuous(breaks = seq(0, 100000, 25000), limits = c(0, 100000),
+            labels = scales::format_format(scientific = FALSE)) +
+        scale_y_continuous(breaks = seq(0, 100000, 25000), limits = c(0, 100000),
+            labels = scales::format_format(scientific = FALSE)) +
         theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
-
-gg_rt_tic_q1_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q1 = RT_TIC_Q1) |>
-    ggplot(aes(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
-
-##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q2 (QuaMeter)
-gg_rt_tic_q2_msLevel1 <- metrics_sps_msLevel1 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
-
-gg_rt_tic_q2_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    ggplot(aes(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
-
-##  rtOverTicQuantiles (MsQuality) vs. RT_TIC_Q3 (QuaMeter)
-gg_rt_tic_q3_msLevel1 <- metrics_sps_msLevel1 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
-    ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
-
-gg_rt_tic_q3_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q3 = RT_TIC_Q1 + RT_TIC_Q2 + RT_TIC_Q3) |>
-    ggplot(aes(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none", axis.title = element_blank(),
-            plot.margin = unit(c(0.2, 0.2, 0.2, 0.5), "cm"))
+        theme(legend.position = "none")
 
 row1 <- ggarrange(
-    annotate_figure(ggarrange(gg_rt_tic_q1_msLevel1, labels = "a"), top = "25%"),
-    annotate_figure(ggarrange(gg_rt_tic_q2_msLevel1, labels = "b"), top = "50%"),
-    annotate_figure(ggarrange(gg_rt_tic_q3_msLevel1, labels = "c"), top = "75%"),
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel1_filtered, labels = "a"), 
+        left = "filtered", top = "MS1"),
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel2_filtered, labels = "b"), 
+        top = "MS2"),
+    ncol = 2, nrow = 1)
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel1, labels = "c"), 
+        left = "unfiltered"),
+    annotate_figure(ggarrange(gg_numberSpectra_msLevel2, labels = "d")),
+    ncol = 2, nrow = 1)
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2, align = "v")
+
+annotate_figure(p, top = text_grob("number of spectra"))
+
+
+## calculate correlation
+cor_numberSpectra_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["numberSpectra"]],
+    metrics_sps_msLevel1_filtered[["MS1.Count"]], method = "pearson")
+cor_numberSpectra_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["numberSpectra"]],
+    metrics_sps_msLevel1_filtered[["MS1.Count"]], method = "spearman")
+cor_numberSpectra_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["numberSpectra"]],
+    metrics_sps_msLevel1[["MS1.Count"]], method = "pearson")
+cor_numberSpectra_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["numberSpectra"]],
+    metrics_sps_msLevel1[["MS1.Count"]], method = "spearman")
+
+cor_numberSpectra_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["numberSpectra"]],
+    metrics_sps_msLevel2_filtered[["MS2.Count"]], method = "pearson")
+cor_numberSpectra_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["numberSpectra"]], 
+    metrics_sps_msLevel2_filtered[["MS2.Count"]], method = "spearman")
+cor_numberSpectra_msLevel2_p <- cor.test(
+    metrics_sps_msLevel2[["numberSpectra"]],
+    metrics_sps_msLevel2[["MS2.Count"]], method = "pearson")
+cor_numberSpectra_msLevel2_s <- cor.test(
+    metrics_sps_msLevel2[["numberSpectra"]], 
+    metrics_sps_msLevel2[["MS2.Count"]], method = "spearman")
+```
+
+```{r ticQuartersRtFraction-MS1-comparison-amidan2014,  fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS1 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
+
+## 
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+gg_rt_tic_q1_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
+    ggplot(aes(x = `ticQuartersRtFraction.25%`, y = RT.TIC.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+gg_rt_tic_q2_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    ggplot(aes(x = `ticQuartersRtFraction.50%`, y = RT.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+gg_rt_tic_q3_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
+    ggplot(aes(x = `ticQuartersRtFraction.75%`, y = RT.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## 
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+gg_rt_tic_q1_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
+    ggplot(aes(x = `ticQuartersRtFraction.25%`, y = RT.TIC.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+gg_rt_tic_q2_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    ggplot(aes(x = `ticQuartersRtFraction.50%`, y = RT.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+gg_rt_tic_q3_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
+    ggplot(aes(x = `ticQuartersRtFraction.75%`, y = RT.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_tic_q1_msLevel1_filtered, labels = "a"), top = "25%"),
+    annotate_figure(ggarrange(gg_rt_tic_q2_msLevel1_filtered, labels = "b"), top = "50%"),
+    annotate_figure(ggarrange(gg_rt_tic_q3_msLevel1_filtered, labels = "c"), top = "75%"),
         ncol = 3, nrow = 1) |>
-    annotate_figure(left = "MS1")
+    annotate_figure(left = "filtered")
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_tic_q1_msLevel1, labels = "d")), 
+    annotate_figure(ggarrange(gg_rt_tic_q2_msLevel1, labels = "e")),
+    annotate_figure(ggarrange(gg_rt_tic_q3_msLevel1, labels = "f")),
+        ncol = 3, nrow = 1) |>
+    annotate_figure(left = "unfiltered")
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
+annotate_figure(p, top = text_grob("TIC quarters RT fraction"))
+
+
+## calculate correlation
+cor_rt_tic_q1_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]], method = "pearson")
+cor_rt_tic_q1_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q2"]]
+cor_rt_tic_q2_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.50%"]], 
+    tmp, method = "pearson")
+cor_rt_tic_q2_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.50%"]], 
+    tmp, method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q2"]] +
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q3"]]
+cor_rt_tic_q3_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.75%"]], 
+    tmp, method = "pearson")
+cor_rt_tic_q3_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartersRtFraction.75%"]], 
+    tmp, method = "spearman")
+
+cor_rt_tic_q1_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel1[["RT.TIC.Q1"]], method = "pearson")
+cor_rt_tic_q1_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel1[["RT.TIC.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel1[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1[["RT.TIC.Q2"]]
+cor_rt_tic_q2_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.50%"]], tmp, method = "pearson")
+cor_rt_tic_q2_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.50%"]], tmp, method = "spearman")
+
+tmp <- metrics_sps_msLevel1[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1[["RT.TIC.Q2"]] +
+    metrics_sps_msLevel1[["RT.TIC.Q3"]]
+cor_rt_tic_q3_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.75%"]], tmp, method = "pearson")
+cor_rt_tic_q3_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["ticQuartersRtFraction.75%"]], tmp, method = "spearman")
+```
+
+```{r ticQuartersRtFraction-MS2-comparison-amidan2014,  fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for `QuaMeter` are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3` (no specification if these metrices were calculated on MS1 and/or MS2 spectra). The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) 25% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (b) 50% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (c) 75% quantile for filtered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`). (d) 25% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q1`). (e) 50% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q2`). (f) 75% quantile for unfiltered MS2 spectra (`QuaMeter` metric: `RT-TIC-Q3`).", warning = FALSE, echo = FALSE, cache = FALSE}
+
+## 
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+gg_rt_tic_q1_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
+    ggplot(aes(x = `ticQuartersRtFraction.25%`, y = RT.TIC.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+gg_rt_tic_q2_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    ggplot(aes(x = `ticQuartersRtFraction.50%`, y = RT.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+gg_rt_tic_q3_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
+    ggplot(aes(x = `ticQuartersRtFraction.75%`, y = RT.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## 
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q1 (QuaMeter)
+gg_rt_tic_q1_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q1 = RT.TIC.Q1) |>
+    ggplot(aes(x = `ticQuartersRtFraction.25%`, y = RT.TIC.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q2 (QuaMeter)
+gg_rt_tic_q2_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    ggplot(aes(x = `ticQuartersRtFraction.50%`, y = RT.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##  ticQuartersRtFraction (MsQuality) vs. RT-TIC-Q3 (QuaMeter)
+gg_rt_tic_q3_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q1 + RT.TIC.Q2 + RT.TIC.Q3) |>
+    ggplot(aes(x = `ticQuartersRtFraction.75%`, y = RT.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_tic_q1_msLevel2_filtered, labels = "a"), top = "25%"),
+    annotate_figure(ggarrange(gg_rt_tic_q2_msLevel2_filtered, labels = "b"), top = "50%"),
+    annotate_figure(ggarrange(gg_rt_tic_q3_msLevel2_filtered, labels = "c"), top = "75%"),
+        ncol = 3, nrow = 1) |>
+    annotate_figure(left = "filtered")
 row2 <- ggarrange(
     annotate_figure(ggarrange(gg_rt_tic_q1_msLevel2, labels = "d")), 
     annotate_figure(ggarrange(gg_rt_tic_q2_msLevel2, labels = "e")),
     annotate_figure(ggarrange(gg_rt_tic_q3_msLevel2, labels = "f")),
         ncol = 3, nrow = 1) |>
-    annotate_figure(left = "MS2")
-p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
-annotate_figure(p, top = text_grob("RT over TIC Quantiles"))
+    annotate_figure(left = "unfiltered")
 
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
+annotate_figure(p, top = text_grob("TIC quarters RT fraction"))
 
 ## calculate correlation
-cor_rt_tic_q1_msLevel1_p <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.25%"]],
-    metrics_sps_msLevel1[["RT_TIC_Q1"]], method = "pearson")
-cor_rt_tic_q1_msLevel1_s <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.25%"]],
-    metrics_sps_msLevel1[["RT_TIC_Q1"]], method = "spearman")
+cor_rt_tic_q1_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel2_filtered[["RT.TIC.Q1"]], method = "pearson")
+cor_rt_tic_q1_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.25%"]], 
+    metrics_sps_msLevel2_filtered[["RT.TIC.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q2"]]
+cor_rt_tic_q2_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.50%"]], 
+    tmp, method = "pearson")
+cor_rt_tic_q2_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.50%"]], 
+    tmp , method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q2"]] +
+    metrics_sps_msLevel1_filtered[["RT.TIC.Q3"]]
+cor_rt_tic_q3_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.75%"]], 
+    tmp, method = "pearson")
+cor_rt_tic_q3_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["ticQuartersRtFraction.75%"]], 
+    tmp, method = "spearman")
+
 cor_rt_tic_q1_msLevel2_p <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.25%"]],
-    metrics_sps_msLevel2[["RT_TIC_Q1"]], method = "pearson")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.25%"]],
+    metrics_sps_msLevel2[["RT.TIC.Q1"]], method = "pearson")
 cor_rt_tic_q1_msLevel2_s <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.25%"]], 
-    metrics_sps_msLevel2[["RT_TIC_Q1"]], method = "spearman")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.25%"]], 
+    metrics_sps_msLevel2[["RT.TIC.Q1"]], method = "spearman")
 
-tmp <- metrics_sps_msLevel1[["RT_TIC_Q1"]] + 
-    metrics_sps_msLevel1[["RT_TIC_Q2"]]
-cor_rt_tic_q2_msLevel1_p <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.50%"]], tmp, method = "pearson")
-cor_rt_tic_q2_msLevel1_s <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.50%"]], tmp, method = "spearman")
+tmp <- metrics_sps_msLevel1[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1[["RT.TIC.Q2"]]
 cor_rt_tic_q2_msLevel2_p <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.50%"]], tmp, method = "pearson")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.50%"]], tmp, method = "pearson")
 cor_rt_tic_q2_msLevel2_s <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.50%"]], tmp , method = "spearman")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.50%"]], tmp , method = "spearman")
 
-tmp <- metrics_sps_msLevel1[["RT_TIC_Q1"]] + 
-    metrics_sps_msLevel1[["RT_TIC_Q2"]] +
-    metrics_sps_msLevel1[["RT_TIC_Q3"]]
-cor_rt_tic_q3_msLevel1_p <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.75%"]], tmp, method = "pearson")
-cor_rt_tic_q3_msLevel1_s <- cor.test(
-    metrics_sps_msLevel1[["rtOverTicQuantiles.75%"]], tmp, method = "spearman")
+tmp <- metrics_sps_msLevel1[["RT.TIC.Q1"]] + 
+    metrics_sps_msLevel1[["RT.TIC.Q2"]] +
+    metrics_sps_msLevel1[["RT.TIC.Q3"]]
 cor_rt_tic_q3_msLevel2_p <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.75%"]], tmp, method = "pearson")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.75%"]], tmp, method = "pearson")
 cor_rt_tic_q3_msLevel2_s <- cor.test(
-    metrics_sps_msLevel2[["rtOverTicQuantiles.75%"]], tmp, method = "spearman")
+    metrics_sps_msLevel2[["ticQuartersRtFraction.75%"]], tmp, method = "spearman")
 ```
 
-```{r rtOverTicQuantilesComparisonOnePlot-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT over TIC quantiles (`rtOverTicQuantiles`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities stratified by quantiles 25%, 50%, and 75%. (a) Quantiles for MS1 spectra. (b) Quantile for MS2 spectra.", warning = FALSE, echo = FALSE, fig.show='hide'}
+
+```{r ticQuartersRtFractionComparisonOnePlot-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: TIC quarters RT fraction (`ticQuartersRtFraction`). The corresponding metrics for QuaMeter are `RT-TIC-Q1`, `RT-TIC-Q2`, and `RT-TIC-Q3`. The `MsQuality` metrics are calculated from filtered and unfiltered MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 measurement run and the data points are displayed as 2D densities stratified by quantiles 25%, 50%, and 75%. (a) Quantiles for filtered MS1 spectra. (b) Quantile for filtered MS2 spectra . (c) Quantiles for unfiltered MS2 spectra. (d) Quantiles for unfiltered MS2 spectra.", warning = FALSE, echo = FALSE, fig.show='hide', cache = FALSE}
+## combine Q1, Q2, and Q3 in one plot per msLevel
+gg_rt_tic_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
+    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+        `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
+    rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
+        "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
+        "75%_ticQuartersRtFraction" = `ticQuartersRtFraction.75%`,
+        "25%_RTTIC" = RT.TIC.Q1, "50%_RTTIC" = RT.TIC.Q2, 
+        "75%_RTTIC" = RT.TIC.Q3) |>
+    pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
+    ggplot(aes(x = ticQuartersRtFraction, y = RTTIC)) +
+        stat_density_2d(aes(color = Quantile)) +
+        xlab("MsQuality (MS1)") + 
+        ylab("QuaMeter") +
+        xlim(0, 1) + ylim(0, 1) +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
+gg_rt_tic_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.TIC_Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    mutate(RT.TIC_Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
+    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+        `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
+    rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
+        "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
+        "75%_ticQuartersRtFraction" = `ticQuartersRtFraction.75%`,
+        "25%_RTTIC" = RT.TIC.Q1, "50%_RTTIC" = RT.TIC.Q2, 
+        "75%_RTTIC" = RT.TIC.Q3) |>
+    pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
+    ggplot(aes(x = ticQuartersRtFraction, y = RTTIC)) +
+        stat_density_2d(aes(color = Quantile)) +
+        xlab("MsQuality (MS2)") + 
+        ylab("QuaMeter") +
+        xlim(0, 1) + ylim(0, 1) +
+        theme_classic() +
+        guides(colour = guide_legend(override.aes = list(alpha = 1)))
+
 ## combine Q1, Q2, and Q3 in one plot per msLevel
 gg_rt_tic_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
-    select(rowname,  `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, 
-        `rtOverTicQuantiles.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
-    rename("25%_rtOverTicQuantiles" = `rtOverTicQuantiles.25%`,
-        "50%_rtOverTicQuantiles" = `rtOverTicQuantiles.50%`,
-        "75%_rtOverTicQuantiles" = `rtOverTicQuantiles.75%`,
-        "25%_RTTIC" = RT_TIC_Q1, "50%_RTTIC" = RT_TIC_Q2, 
-        "75%_RTTIC" = RT_TIC_Q3) |>
+    mutate(RT.TIC.Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    mutate(RT.TIC.Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
+    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+        `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
+    rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
+        "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
+        "75%_ticQuartersRtFraction" = `ticQuartersRtFraction.75%`,
+        "25%_RTTIC" = RT.TIC.Q1, "50%_RTTIC" = RT.TIC.Q2, 
+        "75%_RTTIC" = RT.TIC.Q3) |>
     pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
-    ggplot(aes(x = rtOverTicQuantiles, y = RTTIC)) +
+    ggplot(aes(x = ticQuartersRtFraction, y = RTTIC)) +
         stat_density_2d(aes(color = Quantile)) +
         xlab("MsQuality (MS1)") + 
         ylab("QuaMeter") +
@@ -1158,17 +2412,17 @@ gg_rt_tic_msLevel1 <- metrics_sps_msLevel1 |>
 
 gg_rt_tic_msLevel2 <- metrics_sps_msLevel2 |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
-    select(rowname,  `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, 
-        `rtOverTicQuantiles.75%`, RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3) |>
-    rename("25%_rtOverTicQuantiles" = `rtOverTicQuantiles.25%`,
-        "50%_rtOverTicQuantiles" = `rtOverTicQuantiles.50%`,
-        "75%_rtOverTicQuantiles" = `rtOverTicQuantiles.75%`,
-        "25%_RTTIC" = RT_TIC_Q1, "50%_RTTIC" = RT_TIC_Q2, 
-        "75%_RTTIC" = RT_TIC_Q3) |>
+    mutate(RT.TIC_Q2 = RT.TIC.Q1 + RT.TIC.Q2) |>
+    mutate(RT.TIC_Q3 = RT.TIC.Q2 + RT.TIC.Q3) |>
+    select(rowname,  `ticQuartersRtFraction.25%`, `ticQuartersRtFraction.50%`, 
+        `ticQuartersRtFraction.75%`, RT.TIC.Q1, RT.TIC.Q2, RT.TIC.Q3) |>
+    rename("25%_ticQuartersRtFraction" = `ticQuartersRtFraction.25%`,
+        "50%_ticQuartersRtFraction" = `ticQuartersRtFraction.50%`,
+        "75%_ticQuartersRtFraction" = `ticQuartersRtFraction.75%`,
+        "25%_RTTIC" = RT.TIC.Q1, "50%_RTTIC" = RT.TIC.Q2, 
+        "75%_RTTIC" = RT.TIC.Q3) |>
     pivot_longer(-rowname, names_to = c("Quantile", ".value"), names_sep = "_") |>
-    ggplot(aes(x = rtOverTicQuantiles, y = RTTIC)) +
+    ggplot(aes(x = ticQuartersRtFraction, y = RTTIC)) +
         stat_density_2d(aes(color = Quantile)) +
         xlab("MsQuality (MS2)") + 
         ylab("QuaMeter") +
@@ -1176,19 +2430,55 @@ gg_rt_tic_msLevel2 <- metrics_sps_msLevel2 |>
         theme_classic() +
         guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-p <- ggarrange(gg_rt_tic_msLevel1, gg_rt_tic_msLevel2,
-    ncol = 2, nrow = 1, labels = "auto")
-annotate_figure(p, top = text_grob("RT over TIC quantiles"))
+p <- ggarrange(gg_rt_tic_msLevel1_filtered, gg_rt_tic_msLevel2_filtered,
+    gg_rt_tic_msLevel1, gg_rt_tic_msLevel2,
+    ncol = 2, nrow = 2, labels = "auto")
+annotate_figure(p, top = text_grob("TIC quarters RT fraction"))
 ```
 
-
-```{r rtOverMsQuartersComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT over MS quarters (`rtOverMsQuarters`). The `MsQuality` metrics are calculated from MS1 and MS2 spectra. One data point is obtained per MS1 and MS2 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Quarter 1 for MS1 spectra. (b) Quarter 2 for MS1 spectra. (c) Quarter 3 for MS1 spectra. (d) Quarter 1 for MS2 spectra. (e) Quarter 2 for MS2 spectra. (f) Quarter 3 for MS2 spectra. Q: quarter.", warning = FALSE, echo = FALSE}
+```{r rtOverMsQuarters-MS1-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT over MS quarters (`rtOverMsQuarters`). The corresponding metrics for `QuaMeter` are `RT-MS-Q1`, `RT-MS-Q2`, and `RT-MS-Q3`. The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Quarter 1 for filtered MS1 spectra (`QuaMeter` metric: `RT-MS-Q1`). (b) Quarter 2 for filtered MS1 spectra (`QuaMeter` metric: `RT-MS-Q2`). (c) Quarter 3 for filtered MS1 spectra (`QuaMeter` metric: `RT-MS-Q3`). (d) Quarter 1 for unfiltered MS1 spectra (`QuaMeter` metric: `RT-MS-Q1`). (e) Quarter 2 for unfiltered MS1 spectra (`QuaMeter` metric: `RT-MS-Q2`). (f) Quarter 3 for unfiltered MS1 spectra (`QuaMeter` metric: `RT-MS-Q2`). Q: quarter.", warning = FALSE, echo = FALSE, cache = FALSE}
 
 ##
-## rtOverMsQuarters vs RT_MS_Q1
+## rtOverMsQuarters vs RT-MS-Q1
+gg_rt_msQuarters_q1_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT.MS.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MS-Q2
+gg_rt_msQuarters_q2_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MS.Q2 = RT.MS.Q1 + RT.MS.Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT.MS.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MS-Q3
+gg_rt_msQuarters_q3_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MS.Q3 = RT.MS.Q1 + RT.MS.Q2 + RT.MS.Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT.MS.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##
+## rtOverMsQuarters vs RT-MS-Q1
 gg_rt_msQuarters_q1_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MS_Q1)) +
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT.MS.Q1)) +
         geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
@@ -1196,11 +2486,11 @@ gg_rt_msQuarters_q1_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-## rtOverMsQuarters vs RT_MS_Q2
+## rtOverMsQuarters vs RT-MS-Q2
 gg_rt_msQuarters_q2_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_MS_Q2 = RT_MS_Q1 + RT_MS_Q2) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MS_Q2)) +
+    mutate(RT.MS.Q2 = RT.MS.Q1 + RT.MS.Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT.MS.Q2)) +
         geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
@@ -1208,47 +2498,11 @@ gg_rt_msQuarters_q2_msLevel1 <- metrics_sps_msLevel1 |>
         theme_classic() +
         theme(legend.position = "none")
 
-## rtOverMsQuarters vs RT_MS_Q3
+## rtOverMsQuarters vs RT-MS-Q3
 gg_rt_msQuarters_q3_msLevel1 <- metrics_sps_msLevel1 |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_MS_Q3 = RT_MS_Q1 + RT_MS_Q2 + RT_MS_Q3) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MS_Q3)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none")
-
-##
-## rtOverMsQuarters vs RT_MSMS_Q1
-gg_rt_msQuarters_q1_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT_MSMS_Q1)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none")
-
-## rtOverMsQuarters vs RT_MSMS_Q2
-gg_rt_msQuarters_q2_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_MSMS_Q2 = RT_MSMS_Q1 + RT_MSMS_Q2) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT_MSMS_Q2)) +
-        geom_bin_2d(bins = 20) +
-        xlab("MsQuality") + 
-        ylab("QuaMeter") +
-        coord_fixed(ratio = 1) +
-        theme_classic() +
-        theme(legend.position = "none")
-
-## rtOverMsQuarters vs RT_MSMS_Q3
-gg_rt_msQuarters_q3_msLevel2 <- metrics_sps_msLevel2 |>
-    filter(!is.na(Curated_Quality)) |>
-    mutate(RT_MSMS_Q3 = RT_MSMS_Q1 + RT_MSMS_Q2 + RT_MSMS_Q3) |>
-    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT_MSMS_Q3)) +
+    mutate(RT.MS.Q3 = RT.MS.Q1 + RT.MS.Q2 + RT.MS.Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT.MS.Q3)) +
         geom_bin_2d(bins = 20) +
         xlab("MsQuality") + 
         ylab("QuaMeter") +
@@ -1257,72 +2511,220 @@ gg_rt_msQuarters_q3_msLevel2 <- metrics_sps_msLevel2 |>
         theme(legend.position = "none")
 
 row1 <- ggarrange(
-    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel1, labels = "a"), 
-        top = "Q1"),
-    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel1, labels = "b"), 
+    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel1_filtered, 
+        labels = "a"), top = "Q1"),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel1_filtered, labels = "b"), 
         top = "Q2"),
-    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel1, labels = "c"), 
+    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel1_filtered, labels = "c"), 
         top = "Q3"),
     ncol = 3, nrow = 1) |>
-    annotate_figure(left = "MS1")
+    annotate_figure(left = "filtered")
+
 row2 <- ggarrange(
-    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel2, labels = "d")), 
-    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel2, labels = "e")),
-    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel2, labels = "f")),
-        ncol = 3, nrow = 1) |>
-    annotate_figure(left = "MS2")
+    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel1, labels = "d")),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel1, labels = "e")),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel1, labels = "f")),
+    ncol = 3, nrow = 1) |>
+    annotate_figure(left = "unfiltered")
+
 p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
 
-annotate_figure(p, top = text_grob("RT over MS Quarters"))
+annotate_figure(p, top = text_grob("RT over MS quarters"))
 
 ## calculate correlation
+cor_rt_msQuarters_q1_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter1"]],
+    metrics_sps_msLevel1_filtered[["RT.MS.Q1"]], method = "pearson")
+cor_rt_msQuarters_q1_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter1"]],
+    metrics_sps_msLevel1_filtered[["RT.MS.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.MS.Q1"]] +
+    metrics_sps_msLevel1_filtered[["RT.MS.Q2"]]
+cor_rt_msQuarters_q2_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter2"]], 
+    tmp, method = "pearson")
+cor_rt_msQuarters_q2_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter2"]], 
+    tmp, method = "spearman")
+
+tmp <- metrics_sps_msLevel1_filtered[["RT.MS.Q1"]] +
+    metrics_sps_msLevel1_filtered[["RT.MS.Q2"]] +
+    metrics_sps_msLevel1_filtered[["RT.MS.Q3"]]
+cor_rt_msQuarters_q3_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter3"]], 
+    tmp, method = "pearson")
+cor_rt_msQuarters_q3_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["rtOverMsQuarters.Quarter3"]], 
+    tmp, method = "spearman")
+
 cor_rt_msQuarters_q1_msLevel1_p <- cor.test(
     metrics_sps_msLevel1[["rtOverMsQuarters.Quarter1"]],
-    metrics_sps_msLevel1[["RT_MS_Q1"]], method = "pearson")
+    metrics_sps_msLevel1[["RT.MS.Q1"]], method = "pearson")
 cor_rt_msQuarters_q1_msLevel1_s <- cor.test(
     metrics_sps_msLevel1[["rtOverMsQuarters.Quarter1"]],
-    metrics_sps_msLevel1[["RT_MS_Q1"]], method = "spearman")
-cor_rt_msQuarters_q1_msLevel2_p <- cor.test(
-    metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]],
-    metrics_sps_msLevel2[["RT_MSMS_Q1"]], method = "pearson")
-cor_rt_msQuarters_q1_msLevel2_s <- cor.test(
-    metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]], 
-    metrics_sps_msLevel2[["RT_MSMS_Q1"]], method = "spearman")
+    metrics_sps_msLevel1[["RT.MS.Q1"]], method = "spearman")
 
-tmp <- metrics_sps_msLevel1[["RT_MS_Q1"]] +
-    metrics_sps_msLevel1[["RT_MS_Q2"]]
+tmp <- metrics_sps_msLevel1[["RT.MS.Q1"]] +
+    metrics_sps_msLevel1[["RT.MS.Q2"]]
 cor_rt_msQuarters_q2_msLevel1_p <- cor.test(
     metrics_sps_msLevel1[["rtOverMsQuarters.Quarter2"]], tmp, method = "pearson")
 cor_rt_msQuarters_q2_msLevel1_s <- cor.test(
     metrics_sps_msLevel1[["rtOverMsQuarters.Quarter2"]], tmp, method = "spearman")
-tmp <- metrics_sps_msLevel1[["RT_MSMS_Q1"]] +
-    metrics_sps_msLevel1[["RT_MSMS_Q2"]]
+
+tmp <- metrics_sps_msLevel1[["RT.MS.Q1"]] +
+    metrics_sps_msLevel1[["RT.MS.Q2"]] +
+    metrics_sps_msLevel1[["RT.MS.Q3"]]
+cor_rt_msQuarters_q3_msLevel1_p <- cor.test(
+    metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "pearson")
+cor_rt_msQuarters_q3_msLevel1_s <- cor.test(
+    metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
+```
+
+```{r rtOverMsQuarters-MS2-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: RT over MS quarters (`rtOverMsQuarters`). The corresponding metrics for `QuaMeter` are `RT-MSMS-Q1`, `RT-MSMS-Q2`, and `RT-MSMS-Q3`. The `MsQuality` metrics are calculated from filtered and unfiltered MS2 spectra. One data point is obtained per MS2 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Quarter 1 for filtered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q1`). (b) Quarter 2 for filtered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q2`). (c) Quarter 3 for filtered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q3`). (d) Quarter 1 for unfiltered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q1`). (e) Quarter 2 for unfiltered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q2`). (f) Quarter 3 for unfiltered MS2 spectra (`QuaMeter` metric: `RT-MSMS-Q3`). Q: quarter.", warning = FALSE, echo = FALSE, cache = FALSE}
+
+##
+## rtOverMsQuarters vs RT-MSMS-Q1
+gg_rt_msQuarters_q1_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT.MSMS.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MSMS-Q2
+gg_rt_msQuarters_q2_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MSMS.Q2 = RT.MSMS.Q1 + RT.MSMS.Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT.MSMS.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MSMS-Q3
+gg_rt_msQuarters_q3_msLevel2_filtered <- metrics_sps_msLevel2_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MSMS.Q3 = RT.MSMS.Q1 + RT.MSMS.Q2 + RT.MSMS.Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT.MSMS.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##
+## rtOverMsQuarters vs RT-MSMS-Q1
+gg_rt_msQuarters_q1_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter1`, y = RT.MSMS.Q1)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MSMS-Q2
+gg_rt_msQuarters_q2_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MSMS.Q2 = RT.MSMS.Q1 + RT.MSMS.Q2) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter2`, y = RT.MSMS.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## rtOverMsQuarters vs RT-MSMS-Q3
+gg_rt_msQuarters_q3_msLevel2 <- metrics_sps_msLevel2 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(RT.MSMS.Q3 = RT.MSMS.Q1 + RT.MSMS.Q2 + RT.MSMS.Q3) |>
+    ggplot(aes(x = `rtOverMsQuarters.Quarter3`, y = RT.MSMS.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel2_filtered, labels = "a"), top = "Q1"), 
+    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel2_filtered, labels = "b"), top = "Q2"),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel2_filtered, labels = "c"), top = "Q3"),
+        ncol = 3, nrow = 1) |>
+    annotate_figure(left = "filtered")
+row2 <- ggarrange(
+    annotate_figure(ggarrange(gg_rt_msQuarters_q1_msLevel2, labels = "d")),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q2_msLevel2, labels = "e")),
+    annotate_figure(ggarrange(gg_rt_msQuarters_q3_msLevel2, labels = "f")),
+        ncol = 3, nrow = 1) |>
+    annotate_figure(left = "unfiltered")
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
+
+annotate_figure(p, top = text_grob("RT over MS quarters"))
+
+## calculate correlation
+cor_rt_msQuarters_q1_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter1"]],
+    metrics_sps_msLevel2_filtered[["RT.MSMS.Q1"]], method = "pearson")
+cor_rt_msQuarters_q1_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter1"]], 
+    metrics_sps_msLevel2_filtered[["RT.MSMS.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel2_filtered[["RT.MSMS.Q1"]] +
+    metrics_sps_msLevel2_filtered[["RT.MSMS.Q2"]]
+cor_rt_msQuarters_q2_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter2"]], 
+    tmp, method = "pearson")
+cor_rt_msQuarters_q2_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter2"]], 
+    tmp, method = "spearman")
+
+tmp <- metrics_sps_msLevel2_filtered[["RT.MSMS.Q1"]] +
+    metrics_sps_msLevel2_filtered[["RT.MSMS.Q2"]] +
+    metrics_sps_msLevel2_filtered[["RT.MSMS.Q3"]]
+cor_rt_msQuarters_q3_msLevel2_filtered_p <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter3"]], 
+    tmp, method = "pearson")
+cor_rt_msQuarters_q3_msLevel2_filtered_s <- cor.test(
+    metrics_sps_msLevel2_filtered[["rtOverMsQuarters.Quarter3"]], 
+    tmp, method = "spearman")
+
+cor_rt_msQuarters_q1_msLevel2_p <- cor.test(
+    metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]],
+    metrics_sps_msLevel2[["RT.MSMS.Q1"]], method = "pearson")
+cor_rt_msQuarters_q1_msLevel2_s <- cor.test(
+    metrics_sps_msLevel2[["rtOverMsQuarters.Quarter1"]], 
+    metrics_sps_msLevel2[["RT.MSMS.Q1"]], method = "spearman")
+
+tmp <- metrics_sps_msLevel2[["RT.MSMS.Q1"]] +
+    metrics_sps_msLevel2[["RT.MSMS.Q2"]]
 cor_rt_msQuarters_q2_msLevel2_p <- cor.test(
     metrics_sps_msLevel2[["rtOverMsQuarters.Quarter2"]], tmp, method = "pearson")
 cor_rt_msQuarters_q2_msLevel2_s <- cor.test(
     metrics_sps_msLevel2[["rtOverMsQuarters.Quarter2"]], tmp, method = "spearman")
 
-tmp <- metrics_sps_msLevel1[["RT_MS_Q1"]] +
-    metrics_sps_msLevel1[["RT_MS_Q2"]] +
-    metrics_sps_msLevel1[["RT_MS_Q3"]]
-cor_rt_msQuarters_q3_msLevel1_p <- cor.test(
-    metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "pearson")
-cor_rt_msQuarters_q3_msLevel1_s <- cor.test(
-    metrics_sps_msLevel1[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
-tmp <- metrics_sps_msLevel1[["RT_MSMS_Q1"]] +
-    metrics_sps_msLevel1[["RT_MSMS_Q2"]] +
-    metrics_sps_msLevel1[["RT_MSMS_Q3"]]
+tmp <- metrics_sps_msLevel2[["RT.MSMS.Q1"]] +
+    metrics_sps_msLevel2[["RT.MSMS.Q2"]] +
+    metrics_sps_msLevel2[["RT.MSMS.Q3"]]
 cor_rt_msQuarters_q3_msLevel2_p <- cor.test(
     metrics_sps_msLevel2[["rtOverMsQuarters.Quarter3"]], tmp, method = "pearson")
 cor_rt_msQuarters_q3_msLevel2_s <- cor.test(
     metrics_sps_msLevel2[["rtOverMsQuarters.Quarter3"]], tmp, method = "spearman")
 ```
 
-```{r msSignal10xChangeComparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS Signal >10x Change (jump, `msSignal10xChange`). The metrics are only calculated from MS1 spectra. One data point is obtained per MS1 spectra and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas.", warning = FALSE, echo = FALSE}
-
+```{r msSignal10xChange-MS1-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS Signal >10x Change (jump, `msSignal10xChange`). The corresponding metric for `QuaMeter` is `IS-1A`. The metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Jumps for filtered MS1 spectra (`QuaMeter` metric: `IS_1A`). (b) Jumps for unfiltered MS1 spectra (`QuaMeter` metric: `IS-1A`).", warning = FALSE, echo = FALSE, eval = TRUE, cache = FALSE}
 ##
 ## msSignal10xChange vs. IS-1A (jumps)
-p <- metrics_sps_msLevel1 |>
+gg_jump_filtered <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
     mutate(IS_1A = as.numeric(IS_1A)) |>
     ggplot(aes(x = msSignal10xChange, y = IS_1A)) +
@@ -1334,9 +2736,31 @@ p <- metrics_sps_msLevel1 |>
         xlim(0, 520) + ylim(0, 520) +
         theme(legend.position = "none")
 
+gg_jump <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    mutate(IS_1A = as.numeric(IS_1A)) |>
+    ggplot(aes(x = msSignal10xChange, y = IS_1A)) +
+        geom_bin_2d(bins = 30) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        xlim(0, 520) + ylim(0, 520) +
+        theme(legend.position = "none")
+
+col1 <- annotate_figure(ggarrange(gg_jump_filtered, labels = "a"))
+col2 <- annotate_figure(ggarrange(gg_jump, labels = "b"))
+
+p <- ggarrange(col1, col2, ncol = 2, nrow = 1)
 annotate_figure(p, top = text_grob("MS Signal >10x Change (jump)"))
 
 ## calculate correlation
+cor_msSignal10xChange_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["msSignal10xChange"]],
+    as.numeric(metrics_sps_msLevel1_filtered[["IS_1A"]]), method = "pearson")
+cor_msSignal10xChange_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["msSignal10xChange"]],
+    as.numeric(metrics_sps_msLevel1_filtered[["IS_1A"]]), method = "spearman")
 cor_msSignal10xChange_msLevel1_p <- cor.test(
     metrics_sps_msLevel1[["msSignal10xChange"]],
     as.numeric(metrics_sps_msLevel1[["IS_1A"]]), method = "pearson")
@@ -1345,11 +2769,161 @@ cor_msSignal10xChange_msLevel1_s <- cor.test(
     as.numeric(metrics_sps_msLevel1[["IS_1A"]]), method = "spearman")
 ```
 
-The Figures \@ref(fig:rtDurationComparison-amidan2014),
-\@ref(fig:numberSpectraComparison-amidan2014),
-\@ref(fig:rtOverTicQuantilesComparison-amidan2014), 
-\@ref(fig:rtOverMsQuartersComparison-amidan2014),
-\@ref(fig:msSignal10xChangeComparison-amidan2014) 
+
+
+```{r ticQuartileToQuartileLogRatio-MS1-comparison-amidan2014, fig.cap = "Comparison of quality metrics calculated by `MsQuality` and `QuaMeter`: MS1 TIC quartile ratios (`ticQuartileToQuartileLogRatio`). The corresponding metrics for `QuaMeter` are `MS1-TIC-Q2`, `MS1-TIC-Q3`, and `MS1-TIC-Q4`. The `MsQuality` metrics are calculated from filtered and unfiltered MS1 spectra. One data point is obtained per MS1 measurement run and the data points are displayed as 2D densities. Brighter areas correspond to high 2D density areas. (a) Q2/Q1 log ratio for filtered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q2`). (b) Q3/Q2 log ratio for filtered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q3`). (c) Q4/Q3 log ratio for filtered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q4`). (d) Q2/Q1 log ratio for unfiltered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q2`). (e) Q3/Q2 log ratio for unfiltered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q3`). (f) Q4/Q3 log ratio for unfiltered MS1 spectra (`QuaMeter` metric: `MS1-TIC-Q4`).", warning = FALSE, echo = FALSE, cache = FALSE}
+
+##
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q2
+gg_ticQToQLogRatio_Q2Q1_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q2/Q1`, y = MS1.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q3
+gg_ticQToQLogRatio_Q3Q2_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q3/Q2`, y = MS1.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q4
+gg_ticQToQLogRatio_Q4Q3_msLevel1_filtered <- metrics_sps_msLevel1_filtered |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q4/Q3`, y = MS1.TIC.Q4)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+##
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q2
+gg_ticQToQLogRatio_Q2Q1_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q2/Q1`, y = MS1.TIC.Q2)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q3
+gg_ticQToQLogRatio_Q3Q2_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q3/Q2`, y = MS1.TIC.Q3)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+## ticQuartileToQuartileLogRatio vs MS1.TIC.Q4
+gg_ticQToQLogRatio_Q4Q3_msLevel1 <- metrics_sps_msLevel1 |>
+    filter(!is.na(Curated_Quality)) |>
+    ggplot(aes(x = `ticQuartileToQuartileLogRatio.Q4/Q3`, y = MS1.TIC.Q4)) +
+        geom_bin_2d(bins = 20) +
+        xlab("MsQuality") + 
+        ylab("QuaMeter") +
+        coord_fixed(ratio = 1) +
+        theme_classic() +
+        theme(legend.position = "none")
+
+row1 <- ggarrange(
+    annotate_figure(ggarrange(
+        gg_ticQToQLogRatio_Q2Q1_msLevel1_filtered, labels = "a"), top = "Q2/Q1"),
+    annotate_figure(ggarrange(
+        gg_ticQToQLogRatio_Q3Q2_msLevel1_filtered, labels = "b"), top = "Q3/Q2"),
+    annotate_figure(ggarrange(
+        gg_ticQToQLogRatio_Q4Q3_msLevel1_filtered, labels = "c"), top = "Q4/Q3"),
+    ncol = 3, nrow = 1) |>
+    annotate_figure(left = "filtered")
+
+row2 <- ggarrange(
+    annotate_figure(
+        ggarrange(gg_ticQToQLogRatio_Q2Q1_msLevel1_filtered, labels = "d")),
+    annotate_figure(
+        ggarrange(gg_ticQToQLogRatio_Q3Q2_msLevel1_filtered, labels = "e")),
+    annotate_figure(
+        ggarrange(gg_ticQToQLogRatio_Q4Q3_msLevel1_filtered, labels = "f")),
+    ncol = 3, nrow = 1) |>
+    annotate_figure(left = "unfiltered")
+
+p <- ggarrange(row1, row2, ncol = 1, nrow = 2)
+
+annotate_figure(p, top = text_grob("MS1 TIC quartile ratios"))
+
+## calculate correlation
+cor_ticQToQLogRatio_Q2Q1_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q2/Q1"]],
+    metrics_sps_msLevel1_filtered[["MS1.TIC.Q2"]], method = "pearson", 
+    na.rm = TRUE)
+cor_ticQToQLogRatio_Q2Q1_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q2/Q1"]],
+    metrics_sps_msLevel1_filtered[["MS1.TIC.Q2"]], method = "spearman", 
+    na.rm = TRUE)
+
+cor_ticQToQLogRatio_Q3Q2_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q3/Q2"]], 
+    metrics_sps_msLevel1[["MS1.TIC.Q3"]], method = "pearson", 
+    na.rm = TRUE)
+cor_ticQToQLogRatio_Q3Q2_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q3/Q2"]], 
+    metrics_sps_msLevel1[["MS1.TIC.Q3"]], method = "spearman", 
+    na.rm = TRUE)
+
+cor_ticQToQLogRatio_Q4Q3_msLevel1_filtered_p <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q4/Q3"]], 
+    metrics_sps_msLevel1[["MS1.TIC.Q4"]], method = "pearson", 
+    na.rm = TRUE)
+cor_ticQToQLogRatio_Q4Q3_msLevel1_filtered_s <- cor.test(
+    metrics_sps_msLevel1_filtered[["ticQuartileToQuartileLogRatio.Q4/Q3"]], 
+    metrics_sps_msLevel1[["MS1.TIC.Q4"]], method = "spearman", 
+    na.rm = TRUE)
+
+tmp_Q2_Q1 <- metrics_sps_msLevel1[["ticQuartileToQuartileLogRatio.Q2/Q1"]]
+tmp_Q2_Q1[tmp_Q2_Q1 == Inf] <- NA
+tmp_Q3_Q2 <- metrics_sps_msLevel1[["ticQuartileToQuartileLogRatio.Q3/Q2"]]
+tmp_Q3_Q2[tmp_Q3_Q2 == Inf] <- NA
+tmp_Q4_Q3 <- metrics_sps_msLevel1[["ticQuartileToQuartileLogRatio.Q4/Q3"]]
+tmp_Q4_Q3[tmp_Q4_Q3 == Inf] <- NA
+cor_ticQToQLogRatio_Q2Q1_msLevel1_p <- cor.test(tmp_Q2_Q1,
+    metrics_sps_msLevel1[["MS1.TIC.Q2"]], method = "pearson")
+cor_ticQToQLogRatio_Q2Q1_msLevel1_s <- cor.test(tmp_Q2_Q1,
+    metrics_sps_msLevel1[["MS1.TIC.Q2"]], method = "spearman")
+
+cor_ticQToQLogRatio_Q3Q2_msLevel1_p <- cor.test(tmp_Q3_Q2, 
+    metrics_sps_msLevel1[["MS1.TIC.Q3"]], method = "pearson")
+cor_ticQToQLogRatio_Q3Q2_msLevel1_s <- cor.test(tmp_Q3_Q2, 
+    metrics_sps_msLevel1[["MS1.TIC.Q3"]], method = "spearman")
+
+cor_ticQToQLogRatio_Q4Q3_msLevel1_p <- cor.test(tmp_Q4_Q3, 
+    metrics_sps_msLevel1[["MS1.TIC.Q4"]], method = "pearson")
+cor_ticQToQLogRatio_Q4Q3_msLevel1_s <- cor.test(tmp_Q4_Q3, 
+    metrics_sps_msLevel1[["MS1.TIC.Q4"]], method = "spearman")
+```
+
+
+The Figures \@ref(fig:chromatographyDuration-comparison-amidan2014),
+\@ref(fig:numberSpectra-comparison-amidan2014),
+\@ref(fig:ticQuartersRtFraction-MS1-comparison-amidan2014),
+\@ref(fig:ticQuartersRtFraction-MS2-comparison-amidan2014),
+\@ref(fig:rtOverMsQuarters-MS1-comparison-amidan2014),
+\@ref(fig:rtOverMsQuarters-MS2-comparison-amidan2014),
+\@ref(fig:msSignal10xChange-MS1-comparison-amidan2014), and
+\@ref(fig:ticQuartileToQuartileLogRatio-MS1-comparison-amidan2014)
 indicate that the `QuaMeter` and `MsQuality` generally compute
 similar values. This is shown by values that show high correlation (points
 locate close to the identity line within the scatter plots). We provide in 
@@ -1361,84 +2935,161 @@ between the `MsQuality` and `QuaMeter` metrics. This analysis supports
 the observation that `MsQuality` calculates highly similar metric values as
 75% of the metrics show Pearson/Spearman coefficients of 0.81/0.87 or higher.
 
-```{r eval = TRUE, echo = FALSE}
-.cols <- c("MsQuality", "QuaMeter", "MS level", "Pearson coef.", "Spearman coef.")
+```{r correlation-amidan2014, eval = TRUE, echo = FALSE}
+.cols <- c("MsQuality", "QuaMeter", "MS level", "Pearson coef. (filtered)", 
+    "Spearman coef. (filtered)", "Pearson coef.", "Spearman coef.")
 
 df <- data.frame(rbind(
-    c("rtDuration", "RT_Duration", 1, 
-        round(cor_rtDuration_p$estimate, 3),
-        round(cor_rtDuration_s$estimate, 3)), 
-    c("numberSpectra", "MS1_Count", 1, 
+    c("chromatographyDuration", "RT-Duration", 1, 
+        round(cor_chromatographyDuration_msLevel1_filtered_p$estimate, 3),
+        round(cor_chromatographyDuration_msLevel1_filtered_s$estimate, 3),
+        round(cor_chromatographyDuration_msLevel1_p$estimate, 3),
+        round(cor_chromatographyDuration_msLevel1_s$estimate, 3)), 
+    c("chromatographyDuration", "RT-Duration", 2, 
+        round(cor_chromatographyDuration_msLevel2_filtered_p$estimate, 3),
+        round(cor_chromatographyDuration_msLevel2_filtered_s$estimate, 3),
+        round(cor_chromatographyDuration_msLevel2_p$estimate, 3),
+        round(cor_chromatographyDuration_msLevel2_s$estimate, 3)), 
+    c("numberSpectra", "MS1-Count", 1, 
+        round(cor_numberSpectra_msLevel1_filtered_p$estimate, 3), 
+        round(cor_numberSpectra_msLevel1_filtered_s$estimate, 3),
         round(cor_numberSpectra_msLevel1_p$estimate, 3), 
         round(cor_numberSpectra_msLevel1_s$estimate, 3)),
-    c("numberSpectra", "MS2_Count", 2,
+    c("numberSpectra", "MS2-Count", 2,
+        round(cor_numberSpectra_msLevel2_filtered_p$estimate, 3), 
+        round(cor_numberSpectra_msLevel2_filtered_s$estimate, 3),
         round(cor_numberSpectra_msLevel2_p$estimate, 3), 
         round(cor_numberSpectra_msLevel2_s$estimate, 3)),
-    c("rtOverTicQuantiles.25%", "RT_TIC_Q1", 1, 
+    c("ticQuartersRtFraction.25%", "RT-TIC-Q1", 1, 
+        round(cor_rt_tic_q1_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_tic_q1_msLevel1_filtered_s$estimate, 3),
         round(cor_rt_tic_q1_msLevel1_p$estimate, 3),
         round(cor_rt_tic_q1_msLevel1_s$estimate, 3)),
-    c("rtOverTicQuantiles.25%", "RT_TIC_Q1", 2, 
+    c("ticQuartersRtFraction.25%", "RT-TIC-Q1", 2, 
+        round(cor_rt_tic_q1_msLevel2_filtered_p$estimate, 3),
+        round(cor_rt_tic_q1_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_tic_q1_msLevel2_p$estimate, 3),
         round(cor_rt_tic_q1_msLevel2_s$estimate, 3)),
-    c("rtOverTicQuantiles.50%", "RT_TIC_Q2", 1, 
+    c("ticQuartersRtFraction.50%", "RT-TIC-Q2", 1, 
+        round(cor_rt_tic_q2_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_tic_q2_msLevel1_filtered_s$estimate, 3),
         round(cor_rt_tic_q2_msLevel1_p$estimate, 3),
         round(cor_rt_tic_q2_msLevel1_s$estimate, 3)),
-    c("rtOverTicQuantiles.50%", "RT_TIC_Q2", 2, 
+    c("ticQuartersRtFraction.50%", "RT-TIC-Q2", 2, 
+        round(cor_rt_tic_q2_msLevel2_filtered_p$estimate, 3),
+        round(cor_rt_tic_q2_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_tic_q2_msLevel2_p$estimate, 3),
         round(cor_rt_tic_q2_msLevel2_s$estimate, 3)),
-    c("rtOverTicQuantiles.75%", "RT_TIC_Q3", 1, 
+    c("ticQuartersRtFraction.75%", "RT-TIC-Q3", 1, 
+        round(cor_rt_tic_q3_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_tic_q3_msLevel1_filtered_s$estimate, 3),
         round(cor_rt_tic_q3_msLevel1_p$estimate, 3),
         round(cor_rt_tic_q3_msLevel1_s$estimate, 3)),
-    c("rtOverTicQuantiles.75%", "RT_TIC_Q3", 2, 
+    c("ticQuartersRtFraction.75%", "RT-TIC-Q3", 2, 
+        round(cor_rt_tic_q3_msLevel2_filtered_p$estimate, 3),
+        round(cor_rt_tic_q3_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_tic_q3_msLevel2_p$estimate, 3),
         round(cor_rt_tic_q3_msLevel2_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter1", "RT_MS_Q1", 1, 
+    c("rtOverMsQuarters.Quarter1", "RT-MS-Q1", 1, 
+        round(cor_rt_msQuarters_q1_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_msQuarters_q1_msLevel1_filtered_s$estimate, 3),
         round(cor_rt_msQuarters_q1_msLevel1_p$estimate, 3),
         round(cor_rt_msQuarters_q1_msLevel1_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter1", "RT_MSMS_Q1", 2, 
+    c("rtOverMsQuarters.Quarter1", "RT-MSMS-Q1", 2, 
+        round(cor_rt_msQuarters_q1_msLevel2_filtered_p$estimate, 3), 
+        round(cor_rt_msQuarters_q1_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_msQuarters_q1_msLevel2_p$estimate, 3), 
         round(cor_rt_msQuarters_q1_msLevel2_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter2", "RT_MS_Q2", 1, 
+    c("rtOverMsQuarters.Quarter2", "RT-MS-Q2", 1, 
+        round(cor_rt_msQuarters_q2_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_msQuarters_q2_msLevel1_filtered_s$estimate, 3), 
         round(cor_rt_msQuarters_q2_msLevel1_p$estimate, 3),
         round(cor_rt_msQuarters_q2_msLevel1_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter2", "RT_MSMS_Q2", 2,
+    c("rtOverMsQuarters.Quarter2", "RT-MSMS-Q2", 2,
+        round(cor_rt_msQuarters_q2_msLevel2_filtered_p$estimate, 3),
+        round(cor_rt_msQuarters_q2_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_msQuarters_q2_msLevel2_p$estimate, 3),
         round(cor_rt_msQuarters_q2_msLevel2_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter3", "RT_MS_Q3", 1, 
+    c("rtOverMsQuarters.Quarter3", "RT-MS-Q3", 1, 
+        round(cor_rt_msQuarters_q3_msLevel1_filtered_p$estimate, 3),
+        round(cor_rt_msQuarters_q3_msLevel1_filtered_s$estimate, 3), 
         round(cor_rt_msQuarters_q3_msLevel1_p$estimate, 3),
         round(cor_rt_msQuarters_q3_msLevel1_s$estimate, 3)),
-    c("rtOverMsQuarters.Quarter3", "RT_MSMS_Q3", 2,
+    c("rtOverMsQuarters.Quarter3", "RT-MSMS-Q3", 2,
+        round(cor_rt_msQuarters_q3_msLevel2_filtered_p$estimate, 3),
+        round(cor_rt_msQuarters_q3_msLevel2_filtered_s$estimate, 3),
         round(cor_rt_msQuarters_q3_msLevel2_p$estimate, 3),
         round(cor_rt_msQuarters_q3_msLevel2_s$estimate, 3)),
-    c("msSignal10xChange", "IS_1A", 1, 
+    c("msSignal10xChange", "IS-1A", 1, 
+        round(cor_msSignal10xChange_msLevel1_filtered_p$estimate, 3),
+        round(cor_msSignal10xChange_msLevel1_filtered_s$estimate, 3),
         round(cor_msSignal10xChange_msLevel1_p$estimate, 3),
-        round(cor_msSignal10xChange_msLevel1_s$estimate, 3))
+        round(cor_msSignal10xChange_msLevel1_s$estimate, 3)),
+    c("ticQuartileToQuartileLogRatio.Q2/Q1", "MS1-TIC-Q2", 1,
+        round(cor_ticQToQLogRatio_Q2Q1_msLevel1_filtered_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q2Q1_msLevel1_filtered_s$estimate, 3),
+        round(cor_ticQToQLogRatio_Q2Q1_msLevel1_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q2Q1_msLevel1_s$estimate, 3)),
+    c("ticQuartileToQuartileLogRatio.Q3/Q2", "MS1-TIC-Q3", 1,
+        round(cor_ticQToQLogRatio_Q3Q2_msLevel1_filtered_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q3Q2_msLevel1_filtered_s$estimate, 3),
+        round(cor_ticQToQLogRatio_Q3Q2_msLevel1_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q3Q2_msLevel1_s$estimate, 3)),
+    c("ticQuartileToQuartileLogRatio.Q4/Q3", "MS1-TIC-Q4", 1,
+        round(cor_ticQToQLogRatio_Q4Q3_msLevel1_filtered_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q4Q3_msLevel1_filtered_s$estimate, 3),
+        round(cor_ticQToQLogRatio_Q4Q3_msLevel1_p$estimate, 3),
+        round(cor_ticQToQLogRatio_Q4Q3_msLevel1_s$estimate, 3))
 ))
 colnames(df) <- .cols
 
-knitr::kable(df, caption = "Pearson and Spearman correlation coefficients between \\texttt{MsQuality} and precalculated QuaMeter metrics.", format = "latex", label= "correlation")
+caption <- "Pearson and Spearman correlation coefficients between \\texttt{MsQuality} and precalculated \\texttt{QuaMeter} metrics."
+df_tmp <- df
+df_tmp |>
+knitr::kable(caption = caption, format = "latex", label = "correlation",
+    booktabs = TRUE, escape = TRUE) |>
+    kableExtra::column_spec(3, width = "0.6cm", latex_valign = "m") |>
+    kableExtra::column_spec(4, width = "1.9cm", latex_valign = "m") |>
+    kableExtra::column_spec(5, width = "2.0cm", latex_valign = "m") |>
+    kableExtra::column_spec(6:7, width = "1.35cm", latex_valign = "m") |>
+    kableExtra::kable_styling(font_size = 9)
 
 ## calculate some statistics on the correlation values
 probs <- c(seq(0, 1, 0.1), 0.25, 0.75) |> 
     sort()
-q_pearson <- quantile(as.numeric(df[, "Pearson coef."]), probs = probs) |>
+q_pearson_filtered <- quantile(as.numeric(df[, "Pearson coef. (filtered)"]), 
+    probs = probs, na.rm = TRUE) |>
     round(digits = 2)
-q_spearman <- quantile(as.numeric(df[, "Spearman coef."]), probs = probs) |>
+q_spearman_filtered <- quantile(as.numeric(df[, "Spearman coef. (filtered)"]), 
+    probs = probs, na.rm = TRUE) |>
+    round(digits = 2)
+q_pearson <- quantile(as.numeric(df[, "Pearson coef."]), probs = probs, 
+    na.rm = TRUE) |>
+    round(digits = 2)
+q_spearman <- quantile(as.numeric(df[, "Spearman coef."]), probs = probs, 
+    na.rm = TRUE) |>
     round(digits = 2)
 df <- data.frame(
     Quantile = names(q_pearson),
+    Pearson_filtered = q_pearson_filtered,
+    Spearman_filtered = q_spearman_filtered,
     Pearson = q_pearson,
     Spearman = q_spearman
 )
 rownames(df) <- NULL
-colnames(df)[2:3] <- c("Pearson coef.", "Spearman coef.")
+colnames(df)[2:5] <- .cols[4:7]
 
-knitr::kable(df, caption = "Quantiles for Pearson and Spearman correlation coefficients for \\texttt{MsQuality} and precalculated QuaMeter metrics. The correlation analysis showed that 75\\% of the metrics showed Pearson/Spearman correlation coefficients over 0.81/0.87, 50\\% over 0.89/0.91, and 25\\% over 0.96/0.97 between \\texttt{MsQuality} and QuaMeter metrics.", format = "latex", label = "quantiles")
+caption <- "Quantiles for Pearson and Spearman correlation coefficients for \\texttt{MsQuality} and \\texttt{QuaMeter} metrics. For the filtered spectra in \\texttt{MsQuality}, 75\\% of the \\texttt{MsQuality} metrics showed Pearson/Spearman correlation coefficients over 0.84/0.88, 50\\% over 0.95/0.96, and 25\\% over 1.0/1.0 to the \\texttt{QuaMeter} metrics. For the unfiltered spectra in \\texttt{MsQuality}, 75\\% of the \\texttt{MsQuality} metrics showed Pearson/Spearman correlation coefficients over 0.79/0.86, 50\\% over 0.89/0.90, and 25\\% over 0.96/0.97 to the \\texttt{QuaMeter} metrics."
+
+df |>
+   knitr::kable(caption = caption, format = "latex", label = "quantiles", booktabs = TRUE, escape = T) |>
+    kableExtra::column_spec(2:5, width = "3cm") |>
+   kableExtra::kable_styling()
 
 ```
 
 
-\newpage 
+~\
 
 ## Performance under parallelization
 
@@ -1449,24 +3100,27 @@ is scalability and performance when computing the quality metric.
 We measure the time it takes to calculate the quality 
 metrics under parallelization of the tasks on 1, 2, 4, 8, and 16 workers 
 using the `microbenchmark` package. For computational
-reasons we limit the calculation to the first 500 .mzML files.
+reasons we limit the calculation to the first 500 .mzML files. 
+The operations were executed within a (high-performance) computing environment 
+(31 cores, 128 GB RAM pool for all cores).
+
 
 ```{r df_mb_Amidan2014, echo = TRUE, eval = FALSE}
 path <- "/scratch/naake/Amidan2014"
 fls <- dir(path, full.names = TRUE, recursive = TRUE, pattern = "mzML") |>
     unique()
 fls <- fls[1:500]
-sps_mb <- sps[sps$dataOrigin %in% fls] 
+sps_mb <- sps[sps$dataOrigin %in% fls]
 
-metrics <- c("rtDuration", "rtOverTicQuantiles", "rtOverMsQuarters", 
-    "ticQuartileToQuartileLogRatio", "numberSpectra", 
-    "medianPrecursorMz", "rtIqr", "rtIqrRate", "areaUnderTic", 
-    "areaUnderTicRtQuantiles", "medianTicRtIqr", "medianTicOfRtRange",
-    "mzAcquisitionRange", "rtAcquisitionRange", "precursorIntensityRange", 
-    "precursorIntensityQuartiles", "precursorIntensityMean", 
-    "precursorIntensitySd", "msSignal10xChange", "ratioCharge1over2", 
-    "ratioCharge3over2", "ratioCharge4over2", "meanCharge", 
-    "medianCharge")
+metrics <- c("chromatographyDuration", "ticQuartersRtFraction", 
+    "rtOverMsQuarters", "ticQuartileToQuartileLogRatio", "numberSpectra",
+    "numberEmptyScans", "medianPrecursorMz", "rtIqr", "rtIqrRate", 
+    "areaUnderTic", "areaUnderTicRtQuantiles", "medianTicRtIqr", 
+    "medianTicOfRtRange", "mzAcquisitionRange", "rtAcquisitionRange",
+    "precursorIntensityRange", "precursorIntensityQuartiles", 
+    "precursorIntensityMean", "precursorIntensitySd", 
+    "msSignal10xChange", "ratioCharge1over2", "ratioCharge3over2", 
+    "ratioCharge4over2", "meanCharge", "medianCharge")
 
 df_mb <- microbenchmark(
     workers_1 = calculateMetricsFromSpectra(spectra = sps_mb, 
@@ -1492,7 +3146,7 @@ saveRDS(df_mb, file = "../Amidan2014/Amidan2014_df_mb.RDS")
 df_mb <- readRDS(file = "../Amidan2014/Amidan2014_df_mb.RDS")
 ```
 
-```{r microbenchmark-amidan2014, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Amidan2014 under parallelization (1, 2, 4, 8, and 16 workers).", warning=FALSE}
+```{r microbenchmark-amidan2014, echo = FALSE, eval = TRUE, fig.cap = "Execution time for the calculation of quality metrics of the data set of @Amidan2014 under parallelization (1, 2, 4, 8, and 16 workers).", warning=FALSE, cache = FALSE}
 ## convert from nano seconds to seconds
 df_mb[["time"]] <- df_mb[["time"]] / 10e9
 df_mb <- df_mb |>
@@ -1520,7 +3174,7 @@ the quality metrics across multiple workers, it is possible to significantly
 reduce the execution time.
 
 
-```{r figure_main, echo = FALSE, message = FALSE, warning=FALSE, results = FALSE, fig.show = "hide"}
+```{r figure_main, echo = FALSE, message = FALSE, warning=FALSE, results = FALSE, fig.show = "hide", cache = FALSE}
 ## combine several plots into one figure for the main part of the manuscript
 
 ## gg_tic_msLevel1: metric for classification into good and poor quality 
@@ -1529,51 +3183,54 @@ reduce the execution time.
 ## measurements
 ## gg_rt_tic_msLevel1: comparison between QuaMeter/MsQuality metrics
 ## gg_mb: benchmark of computation using microbenchmark package
-fig_a <- gg_tic_msLevel1 <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-      selected_metric = "areaUnderTic", ylim = c(0, 8e12), 
-      plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
-      plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5) |>
+fig_a <- gg_tic_msLevel1 <- metrics_sps_msLevel1_filtered |>
+    mutate(areaUnderTic = log(areaUnderTic)) |>
+    plot_beeswarm(selected_metric = "areaUnderTic", ylim = c(15, 31), 
+        plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+        plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5,
+        add_grid_ttest = TRUE) |>
     patchworkGrob() |>
     gridExtra::grid.arrange( 
-        left = text_grob("area under TIC (A.U.)", size = 10, rot = 90))#, 
-        #size = 10, vjust = -0.4)
-fig_b <- plot_beeswarm(metrics = metrics_sps_msLevel1, 
-    selected_metric = "areaUnderTicRtQuantiles.50%", ylim = c(0, 3e12),
-    plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
-    plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5) |>
+        left = text_grob("area under TIC (A.U.)", size = 10, rot = 90))
+fig_b <- metrics_sps_msLevel1_filtered |>
+    mutate(`areaUnderTicRtQuantiles.50%` = log(`areaUnderTicRtQuantiles.50%`)) |>
+    plot_beeswarm(selected_metric = "areaUnderTicRtQuantiles.50%", 
+        ylim = c(13, 31),
+        plot_margin_1 = unit(c(-15, 0, -15, 0), "cm"), 
+        plot_margin_2 = unit(c(-15, 0, -15, 0), "cm"), aspect.ratio = 3.5,
+        add_grid_ttest = TRUE) |>
     patchworkGrob() |>
     gridExtra::grid.arrange( 
-        left = text_grob("area under TIC RT quantile (50%)   ", 
-            size = 10, rot = 90, just = c("center", "center")))#, 
-        #size = 10, vjust = -0.4)
-    
-    
-tmp <- metrics_sps_msLevel1 |>
+        left = text_grob("area under TIC RT quantile (50%)", 
+            size = 10, rot = 90, just = c("center", "center")))
+
+tmp <- metrics_sps_msLevel1_filtered |>
     filter(!is.na(Curated_Quality)) |>
-    mutate(RT_TIC_Q2 = RT_TIC_Q1 + RT_TIC_Q2) |>
-    mutate(RT_TIC_Q3 = RT_TIC_Q2 + RT_TIC_Q3) |>
-    select(rowname, `rtOverTicQuantiles.25%`, `rtOverTicQuantiles.50%`, `rtOverTicQuantiles.75%`, 
-        RT_TIC_Q1, RT_TIC_Q2, RT_TIC_Q3)
+    mutate(RT.MS.Q2 = RT.MS.Q1 + RT.MS.Q2) |>
+    mutate(RT.MS.Q3 = RT.MS.Q2 + RT.MS.Q3) |>
+    select(rowname, `rtOverMsQuarters.Quarter1`, `rtOverMsQuarters.Quarter2`,
+        `rtOverMsQuarters.Quarter3`, 
+        RT.MS.Q1, RT.MS.Q2, RT.MS.Q3)
 tmp <- rbind(
     tmp |>
-        select(rowname, `rtOverTicQuantiles.25%`, RT_TIC_Q1) |>
-        rename(x = `rtOverTicQuantiles.25%`, y = RT_TIC_Q1) |>
-        mutate(variable = "25% quantile"),
+        select(rowname, `rtOverMsQuarters.Quarter1`, RT.MS.Q1) |>
+        rename(x = `rtOverMsQuarters.Quarter1`, y = RT.MS.Q1) |>
+        mutate(variable = "Q1"),
     tmp |>
-        select(rowname, `rtOverTicQuantiles.50%`, RT_TIC_Q2) |>
-        rename(x = `rtOverTicQuantiles.50%`, y = RT_TIC_Q2) |>
-        mutate(variable = "50% quantile"),
+        select(rowname, `rtOverMsQuarters.Quarter2`, RT.MS.Q2) |>
+        rename(x = `rtOverMsQuarters.Quarter2`, y = RT.MS.Q2) |>
+        mutate(variable = "Q2"),
     tmp |>
-        select(rowname, `rtOverTicQuantiles.75%`, RT_TIC_Q3) |>
-        rename(x = `rtOverTicQuantiles.75%`, y = RT_TIC_Q3) |>
-        mutate(variable = "75% quantile"))
+        select(rowname, `rtOverMsQuarters.Quarter3`, RT.MS.Q3) |>
+        rename(x = `rtOverMsQuarters.Quarter3`, y = RT.MS.Q3) |>
+        mutate(variable = "Q3"))
 fig_c <- ggplot(tmp, aes(x = x, y = y)) +
         facet_wrap(~ variable) +
         geom_bin_2d(bins = 20) +
         scale_x_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1), 
             labels = c("0", "0.25", "0.5", "0.75", "1")) +
-        xlab("RT over TIC quantiles (MsQuality)") + 
-        ylab("RT over TIC quantiles (QuaMeter)") +
+        xlab("RT over MS quarters (MsQuality)") + 
+        ylab("RT over MS quarters (QuaMeter)") +
         coord_fixed(ratio = 1) +
         theme_classic() +
         theme(legend.position = "none", 
