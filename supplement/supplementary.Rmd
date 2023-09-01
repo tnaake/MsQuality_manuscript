@@ -29,15 +29,15 @@ header-includes:
 
 This is the Supplementary Information for the publication "MsQuality - an 
 interoperable open-source package for the calculation of standardized quality
-metrics of mass spectrometry data". It demonstrates  
-functionality of the `MsQuality` package on two example analysis 
+metrics of mass spectrometry data". It demonstrates functionality of the 
+`MsQuality` package on two example analysis 
 workflows using the data sets of @Cherkaoui2022 and @Amidan2014.
 
 The `MsQuality` package calculates low-level quality metrics that only require 
 minimal information about the mass spectrometry data: retention time, m/z 
 values, and associated intensities. The list of quality metrics provided by the
 mzQC framework ([hupo-psi.github.io/mzQC](hupo-psi.github.io/mzQC)) 
-is extensive, also including metrics that depend on  
+is extensive, also including metrics that depend on 
 higher level information which might not be readily accessible from .raw or 
 .mzML files, such as pump pressure mean, or that rely on alignment results, 
 like retention time mean shift, signal-to-noise ratio, precursor errors (ppm). 
@@ -247,8 +247,8 @@ Currently, all quality metrics can be calculated for both `Spectra` and
     (2) the TIC values between subsequent scan events are taken
         as they are,
     (3) the ratios between the 25\%, 50\%, 75\%, and 100\% quantile to the 
-        25\% quantile of the values of (2) are calculated.
-    (4) The `log` values of the ratios are returned.
+        25\% quantile of the values of (2) are calculated,
+    (4) the `log` values of the ratios are returned.
 - *numberSpectra*, **number of MS1 spectra** MS:4000059), 
   "The number of MS1 events in the run." [PSI:MS], `msLevel = 1L`;
   An unusual low number may indicate incomplete sampling/scan rate of the MS 
@@ -490,7 +490,7 @@ Currently, all quality metrics can be calculated for both `Spectra` and
     (1) the `Spectra` object is filtered according to the MS level, 
     (2) the intensities of the precursor ions are obtained, 
     (3) the 5\% and 95\% quantile of these intensities are obtained 
-        (1NA1 values are removed), 
+        (`NA` values are removed), 
     (4) the ratio between the 95\% and the 5\% intensity quantile is calculated
         and returned. 
 - *medianTicRtIqr*, **median of TIC values in the RT range in which the middle 
@@ -812,8 +812,8 @@ sps <- Spectra(fls, backend = MsBackendMzR())
 ```
 
 The `Spectra` object is given to the `calculateMetricsFromSpectra` function.
-We are interested in the metrics (`"chromatographyDuration"`), 
-(`"numberSpectra"`), and (`"areaUnderTic"`). The metrics are defined by the
+We are interested in the metrics `"chromatographyDuration"`, 
+`"numberSpectra"`, and `"areaUnderTic"`). The metrics are defined by the
 `metrics` vector. 
 We further specify that the metrics should be calculated on MS1 spectra 
 (`msLevel = 1`).
@@ -854,7 +854,7 @@ are reproducible except the parallelization steps in the subsection
 are loaded to the environment.
 
 
-```{r set_directory_for, cache = FALSE}
+```{r set_directory_for, cache = FALSE, warning=FALSE}
 url <- "ftp://massive.ucsd.edu/MSV000087155/ccms_peak/New_mzMLFinal/"
 library(curl)
 file_list <- readLines(curl(url, "r"))
@@ -867,8 +867,9 @@ With the file names available we next create a *BiocFileCache* instance adding
 the files. The *BiocFileCache* will take care of downloading files that are not
 already available in the local cache thus preventing unneeded downloads.
 
-```{r biocFileCache_cherkaoui2022, message = FALSE, cache = FALSE}
+```{r biocFileCache_cherkaoui2022, message = FALSE, cache = FALSE, warning=FALSE}
 library(BiocFileCache)
+
 ## every additional result should be saved in there
 cherkaoui <- BiocFileCache("../Cherkaoui2022", ask = FALSE)
 path <- bfcrpath(cherkaoui, paste0(url, curl_escape(ftp_files)))
@@ -989,7 +990,7 @@ metrics_sps <- metrics_sps |>
     mutate(analyzed = ifelse(dsCode %in% measurements[["dsCode"]], "analyzed", "excluded"))
 ```
 
-```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the measurement was analyzed (`yes`) or excluded (`no`). (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE, cache = FALSE}
+```{r metrics-cherkaoui2022, fig.cap = "Quality metrics for data set of @Cherkaoui2022 stratified by information if the measurement was analyzed or excluded. (a) Area under the TIC (`areaUnderTic`). (b) Minimum values of the m/z acquisition range (`mzAcquisitionRange.min`). (c) maximum values of the m/z acquisition range `mzAcquisitionRange.max`). A.U.: arbitrary units.", echo = FALSE, cache = FALSE}
 gg_areaUnderTic <- metrics_sps |>
     filter(name == "areaUnderTic") |>
     ggplot() +
@@ -1428,7 +1429,7 @@ metrics_sps_msLevel2$chromatographyDuration_new <- metrics_sps_msLevel2$chromato
     as.factor()
 ```
 
-```{r helper_function_plot_beeswarm, eval = TRUE, echo = FALSE}
+```{r helper_function_plot_beeswarm, eval = TRUE, echo = FALSE, warning = FALSE}
 library(patchwork)
 
 plot_beeswarm <- function(metrics, 
