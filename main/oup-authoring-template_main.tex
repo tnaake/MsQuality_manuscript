@@ -168,7 +168,7 @@ such as retention times, $m/z$, and associated intensity values.
 The package automates tracking and quantification of data quality 
 on a per-measurememt basis and 
 helps to integrate these computations in routine workflows, thereby,
-\texttt{MsQuality} facilitates the identification of measurements
+\texttt{MsQuality} facilitates the identification of measurements 
  with a high occurrence of missing values, 
 ahead-of-time termination of chromatographic runs, low instrument sensitivity,
 variations in calibration, and batch and confounding 
@@ -186,7 +186,6 @@ percentile of the TIC.
 
 \section{Usage scenario and implementation} \label{usagescenario}
 
-
 \begin{figure}
     \centering
  	\includegraphics[scale=0.51, clip, trim=0 37 0 5, scale = 0.9]{figure-main}
@@ -199,8 +198,7 @@ percentile of the TIC.
                 in a beeswarm plot and stratified for high-quality and low-quality
                 measurements as classified in \cite{Amidan2014}.
             (c) Comparison of quality metrics calculated by \texttt{MsQuality} 
-                and \texttt{QuaMeter}: RT over 
-		MS quarters. The
+                and \texttt{QuaMeter}: RT over MS quarters. The
 	      data points are displayed as 2D densities. Brighter areas corresond to
                high 2D density areas.
             (d) Wall-clock execution time for the calculation of quality metrics of the 
@@ -212,8 +210,7 @@ percentile of the TIC.
 The versatility of \texttt{MsQuality} in calculating metrics extends to a wide range of
 applications, from small-scale studies to long-term acquisition of mass spectrometry
 data, e.g. a core facility running an instrument for months and years. 
-We demonstrate the utility of \texttt{MsQuality} in two case studies: a 
-metabolomics
+We demonstrate the utility of \texttt{MsQuality} in two case studies: a metabolomics
 dataset of 180 cancer cell lines obtained by flow injection analysis
 \citep{Cherkaoui2022} and a proteomics liquid chromatography
  (LC)-MS dataset of the same 
@@ -222,9 +219,8 @@ usage scenario.
 
 The values computed by \texttt{MsQuality}
 agree with those of \texttt{QuaMeter} \citep{Ma2012} (Fig. \ref{fig:fig1} c): 
-after removing zero-length and zero-intensity entries, complying
-to the calculation of \texttt{QuaMeter},
-75\% of the analyzed \texttt{MsQuality} metrics showed Pearson correlation 
+after removing zero-length and zero-intensity entries, as is done by \texttt{QuaMeter},
+75\% of the 20 compared metrics showed Pearson correlation 
 coefficients over 0.98 and Spearman correlation coefficients 
 over 0.99 (see the Supplementary Data for further details).
 
@@ -235,7 +231,7 @@ agnostic towards the underlying technology (e.g., proteomics, metabolomics, lipi
 It is implemented as an GPL-3-licensed open-source R package, 
 and integrates seamlessly into the 
 \texttt{RforMassSpectrometry}/Bioconductor infrastructure for MS data analysis.
-The package builds
+The package builds 
 upon the established \texttt{Spectra} and \texttt{MsExperiment} packages
 \citep{Rainer2022} to provide and represent the MS data. Thus, \texttt{MsQuality} 
 supports a large variety of data input formats
@@ -244,7 +240,7 @@ file formats, such as Bruker TimsTOF and Thermo raw files)
 as well as analyses of very large experiments through the use of data
 representations with low memory footprint. 
 As \texttt{MsQuality} is written in the software environment R for statistical computing, it facilitates 
-the establishment of automatized, scalable, easy-to-archive, and shareable scripts for complete 
+automatized, scalable, easy-to-archive, and shareable scripts for complete 
 data analysis workflows, including pre-processing and statistical analysis steps.
 Native parallelization enables a fast
 and scalable calculation of quality metrics (Fig. \ref{fig:fig1} d, 
@@ -254,18 +250,16 @@ Besides the human-readable output of quality metrics as a data frame,
 \texttt{MsQuality} enables the users to export the metrics via the mzQC-defined reporting 
 and exchange file format via the \texttt{rmzqc} package \citep{Bielow2023}.
 Finally, \texttt{MsQuality} requires little programmatic interaction and is designed to be
-user-friendly: (i)  after the instantiation of 
-\texttt{Spectra} or \texttt{MsExperiment}
-object, a single function call is needed to calculate the quality metrics; 
-(ii) the metrics can be interactively explored via a shiny application.
+user-friendly: (i)  after the instantiation of \texttt{Spectra} or \texttt{MsExperiment}
+object, a single function call is needed to calculate the quality metrics; (ii) the metrics can be 
+interactively explored via a shiny application.
 
 
 \section{Conclusion}
 
 The \texttt{MsQuality} R package provides functionality to calculate, assess, 
 and track quality metrics for mass spectrometry-derived spectral data. 
-It offers easy-to-use means of evaluating data quality, 
-enabling researchers the identification of low-quality measurements.
+It offers easy-to-use means of evaluating data quality, enabling researchers the identification of low-quality measurements.
 By using standardized quality metrics via the controlled vocabulary of HUPO-PSI,
 \texttt{MsQuality} helps to make QA/QC more comparable across datasets and 
 data producers.
