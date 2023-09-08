@@ -230,9 +230,8 @@ usage scenario.
 
 The values computed by \texttt{MsQuality}
 agree with those of \texttt{QuaMeter} \citep{Ma2012} (Fig. \ref{fig:fig1} c): 
-\textcolor{red}{after removing zero-length and zero-intensity entries, complying
-to the calculation of \texttt{QuaMeter},}
-75\% of the analyzed \texttt{MsQuality} metrics showed Pearson correlation 
+\textcolor{red}{after removing zero-length and zero-intensity entries, as is done by \texttt{QuaMeter},}
+75\% of the \textcolor{red}{\sout{analyzed \texttt{MsQuality}} 20 compared} metrics showed Pearson correlation 
 coefficients over \textcolor{red}{\sout{0.81} 0.98} and Spearman correlation coefficients 
 over \textcolor{red}{\sout{0.87} 0.99} (see the Supplementary Data for further details).
 
@@ -252,7 +251,7 @@ file formats, such as Bruker TimsTOF and Thermo raw files)}
 as well as analyses of very large experiments through the use of data
 representations with low memory footprint. 
 \textcolor{red}{As \texttt{MsQuality} is written in the software environment R for statistical computing, it facilitates 
-the establishment of automatized, scalable, easy-to-archive, and shareable scripts for complete 
+automatized, scalable, easy-to-archive, and shareable scripts for complete 
 data analysis workflows, including pre-processing and statistical analysis steps.}
 Native parallelization enables a fast
 and scalable calculation of quality metrics (Fig. \ref{fig:fig1} d, 
